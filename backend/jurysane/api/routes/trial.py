@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from ...models.trial import Case, CaseRole, TrialPhase, TrialSession, UserRole, Verdict
 from ...services.trial_service import TrialService
+from ...data.case_store import get_shared_cases, get_case_by_id as get_case_by_id_from_store
+
 
 router = APIRouter(prefix="/trial", tags=["trial"])
 
@@ -23,10 +25,31 @@ def get_trial_service() -> TrialService:
     return _trial_service
 
 
+def get_case_by_id(case_id: UUID) -> Case:
+    """Get a case by its ID.
+
+    Args:
+        case_id: The case ID to look up
+
+    Returns:
+        The case with the given ID
+
+    Raises:
+        HTTPException: If case not found
+    """
+    try:
+        return get_case_by_id_from_store(str(case_id))
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
 # Request/Response models
 class CreateTrialRequest(BaseModel):
     """Request to create a new trial."""
-    case: Case
+    case_id: UUID
     user_role: UserRole
 
 
@@ -75,8 +98,11 @@ async def create_trial(
         Trial creation response
     """
     try:
+        # Get the case by ID
+        case = get_case_by_id(request.case_id)
+
         session = await trial_service.create_trial_session(
-            case=request.case,
+            case=case,
             user_role=request.user_role,
         )
 
@@ -84,6 +110,9 @@ async def create_trial(
             session_id=session.id,
             message=f"Trial session created successfully. You are playing the {request.user_role.value}.",
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404 for case not found)
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

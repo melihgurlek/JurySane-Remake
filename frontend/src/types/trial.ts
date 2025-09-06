@@ -140,7 +140,7 @@ export interface TrialSession {
 
 // API Request/Response types
 export interface CreateTrialRequest {
-  case: Case;
+  case_id: string;
   user_role: UserRole;
 }
 

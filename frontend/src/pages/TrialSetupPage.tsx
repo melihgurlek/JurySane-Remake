@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { CaseService } from '../services/caseService';
+import { trialApi } from '../lib/api';
+import { Case, UserRole } from '../types/trial';
 import '../styles/design-system.css';
 
 const TrialSetupPage: React.FC = () => {
@@ -7,45 +10,65 @@ const TrialSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { role, caseId } = location.state || { role: 'defense', caseId: '1' };
   
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [creatingTrial, setCreatingTrial] = useState(false);
+  
   const [aiDifficulty, setAiDifficulty] = useState(50);
   const [trialDuration, setTrialDuration] = useState(60);
   const [notifications, setNotifications] = useState(true);
 
-  const caseData = {
-    id: '1',
-    title: 'The People vs. Alex Turner',
-    type: 'Criminal',
-    charges: 'Assault and Battery (Misdemeanor)',
-    facts: 'Alex Turner is accused of assaulting a person during an altercation at a local bar. The prosecution claims Turner initiated the physical confrontation, while the defense argues self-defense. Key evidence includes security camera footage and witness testimonies.',
-    evidence: [
-      { id: '1', type: 'Security Footage', description: 'Video recording from bar security cameras', status: 'Admitted' },
-      { id: '2', type: 'Medical Report', description: 'Victim\'s medical examination report', status: 'Pending' },
-      { id: '3', type: 'Police Report', description: 'Official police incident report', status: 'Admitted' }
-    ],
-    witnesses: [
-      { id: '1', name: 'Ethan Carter', role: 'Victim', status: 'Available' },
-      { id: '2', name: 'Olivia Bennett', role: 'Witness', status: 'Available' },
-      { id: '3', name: 'Noah Thompson', role: 'Witness', status: 'Available' }
-    ],
-    precedents: [
-      'State v. Johnson, 2018',
-      'People v. Smith, 2020',
-      'Commonwealth v. Davis, 2022'
-    ]
-  };
+  // Fetch case data on component mount
+  useEffect(() => {
+    const fetchCaseData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const caseData = await CaseService.getCaseById(caseId);
+        setCaseData(caseData);
+      } catch (err) {
+        setError('Failed to load case data. Please try again.');
+        console.error('Error fetching case:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleStartTrial = () => {
-    navigate('/trial', { 
-      state: { 
-        role, 
-        caseId, 
-        settings: { 
-          aiDifficulty, 
-          trialDuration, 
-          notifications 
-        } 
-      } 
-    });
+    if (caseId) {
+      fetchCaseData();
+    }
+  }, [caseId]);
+
+  const handleStartTrial = async () => {
+    if (!caseData) return;
+    
+    try {
+      setCreatingTrial(true);
+      setError(null);
+      
+      // Create trial session using the API
+      const response = await trialApi.createTrial({
+        case_id: caseId,
+        user_role: role as UserRole,
+      });
+      
+      // Navigate to trial page with session ID
+      navigate(`/trial/${response.session_id}`, {
+        state: {
+          settings: {
+            aiDifficulty,
+            trialDuration,
+            notifications
+          }
+        }
+      });
+    } catch (err) {
+      setError('Failed to create trial session. Please try again.');
+      console.error('Error creating trial:', err);
+    } finally {
+      setCreatingTrial(false);
+    }
   };
 
   return (
@@ -90,7 +113,42 @@ const TrialSetupPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-primary-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Loading case data...</h3>
+              <p className="text-neutral-600">Please wait while we fetch the case details.</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Error loading case</h3>
+              <p className="text-neutral-600 mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="btn btn-primary"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Case Data Content */}
+          {!loading && !error && caseData && (
+            <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Case Information */}
             <div className="lg:col-span-1 space-y-6">
               {/* Case Summary */}
@@ -104,14 +162,13 @@ const TrialSetupPage: React.FC = () => {
                       <h3 className="font-semibold text-neutral-900 mb-2">Case Details</h3>
                       <p className="text-sm text-neutral-600">
                         <strong>Case:</strong> {caseData.title}<br/>
-                        <strong>Type:</strong> {caseData.type}<br/>
-                        <strong>Charges:</strong> {caseData.charges}
+                        <strong>Charges:</strong> {caseData.charges.join(', ')}
                       </p>
                     </div>
                     <div>
                       <h3 className="font-semibold text-neutral-900 mb-2">Facts</h3>
                       <p className="text-sm text-neutral-600 leading-relaxed">
-                        {caseData.facts}
+                        {caseData.case_facts}
                       </p>
                     </div>
                   </div>
@@ -125,7 +182,7 @@ const TrialSetupPage: React.FC = () => {
                 </div>
                 <div className="card-body">
                   <ul className="space-y-3">
-                    {caseData.precedents.map((precedent, index) => (
+                    {caseData.legal_precedents.map((precedent, index) => (
                       <li key={index} className="flex items-center gap-3 text-sm text-neutral-600 hover:text-primary-600 transition-colors cursor-pointer">
                         <svg className="w-4 h-4 text-primary-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -155,14 +212,12 @@ const TrialSetupPage: React.FC = () => {
                           </svg>
                         </div>
                         <div className="p-3">
-                          <p className="text-sm font-semibold text-neutral-900">{item.type}</p>
+                          <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
                           <p className="text-xs text-neutral-500 mt-1">{item.description}</p>
                           <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${
-                            item.status === 'Admitted' ? 'bg-green-100 text-green-700' :
-                            item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
+                            item.is_admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                           }`}>
-                            {item.status}
+                            {item.is_admitted ? 'Admitted' : 'Pending'}
                           </span>
                         </div>
                       </div>
@@ -187,12 +242,10 @@ const TrialSetupPage: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-neutral-900">{witness.name}</p>
-                          <p className="text-sm text-neutral-600">{witness.role}</p>
+                          <p className="text-sm text-neutral-600">{witness.called_by}</p>
                         </div>
-                        <span className={`status-badge ${
-                          witness.status === 'Available' ? 'status-success' : 'status-warning'
-                        }`}>
-                          {witness.status}
+                        <span className="status-badge status-success">
+                          Available
                         </span>
                       </div>
                     ))}
@@ -278,13 +331,30 @@ const TrialSetupPage: React.FC = () => {
               </svg>
               Back to Case Selection
             </Link>
-            <button onClick={handleStartTrial} className="btn btn-primary btn-lg">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m-6-8h8a2 2 0 012 2v8a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" />
-              </svg>
-              Start Trial
+            <button 
+              onClick={handleStartTrial} 
+              disabled={creatingTrial}
+              className="btn btn-primary btn-lg"
+            >
+              {creatingTrial ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Creating Trial...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m-6-8h8a2 2 0 012 2v8a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                  </svg>
+                  Start Trial
+                </>
+              )}
             </button>
           </div>
+            </>
+          )}
         </div>
       </main>
     </div>
