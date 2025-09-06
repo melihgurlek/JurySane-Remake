@@ -147,7 +147,7 @@ const EvidenceManagementPage: React.FC = () => {
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-neutral-900 mb-2">Evidence Management</h1>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">Evidence Management</h1>
               <p className="text-neutral-600">Review and manage all evidence related to the trial simulation.</p>
             </div>
             <button className="btn btn-primary mt-4 sm:mt-0">

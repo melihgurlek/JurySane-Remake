@@ -66,7 +66,7 @@ const ProfilePage: React.FC = () => {
                   <span className="text-2xl font-bold text-primary-600">JD</span>
                 </div>
                 <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-neutral-900 mb-2">John Doe</h1>
+                  <h1 className="text-2xl font-bold text-neutral-900 mb-2">John Doe</h1>
                   <p className="text-lg text-neutral-600 mb-4">Experience Level: <span className="font-semibold text-primary-600">{userStats.experienceLevel}</span></p>
                   <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                     <div className="flex items-center gap-2">

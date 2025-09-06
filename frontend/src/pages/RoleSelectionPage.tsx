@@ -47,7 +47,7 @@ const RoleSelectionPage: React.FC = () => {
         <div className="container mx-auto max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-4">
               Choose Your Role
             </h1>
             <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
@@ -72,7 +72,7 @@ const RoleSelectionPage: React.FC = () => {
                     <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
-                    <h3 className="text-2xl font-bold">Defense Attorney</h3>
+                    <h3 className="text-xl font-bold">Defense Attorney</h3>
                   </div>
                 </div>
                 <div className="absolute top-4 right-4">
@@ -128,7 +128,7 @@ const RoleSelectionPage: React.FC = () => {
                     <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
-                    <h3 className="text-2xl font-bold">Prosecutor</h3>
+                    <h3 className="text-xl font-bold">Prosecutor</h3>
                   </div>
                 </div>
                 <div className="absolute top-4 right-4">
@@ -179,7 +179,7 @@ const RoleSelectionPage: React.FC = () => {
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-neutral-900">Case Preview</h3>
+                <h3 className="text-xl font-bold text-neutral-900">Case Preview</h3>
               </div>
               <p className="text-neutral-600 mb-4">
                 Review a brief overview of the case details, including charges, key evidence, and witness information. 

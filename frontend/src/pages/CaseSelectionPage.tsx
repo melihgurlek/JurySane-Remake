@@ -1,118 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../styles/design-system.css';
-
-interface Case {
-  id: string;
-  title: string;
-  type: 'Criminal' | 'Civil' | 'Family';
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
-  description: string;
-  estimatedDuration: string;
-  keyConcepts: string[];
-  image: string;
-}
+import { CaseService } from '../services/caseService';
+import { Case } from '../types/trial';
+import CasePreviewModal from '../components/modals/CasePreviewModal';
 
 const CaseSelectionPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const selectedRole = location.state?.role || 'defense';
   
+  const [cases, setCases] = useState<Case[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [previewCase, setPreviewCase] = useState<Case | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const cases: Case[] = [
-    {
-      id: '1',
-      title: 'Theft at the Local Market',
-      type: 'Criminal',
-      difficulty: 'Beginner',
-      description: 'A shoplifting case involving surveillance footage and witness testimony.',
-      estimatedDuration: '30-45 minutes',
-      keyConcepts: ['Evidence Analysis', 'Witness Examination', 'Burden of Proof'],
-      image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop'
-    },
-    {
-      id: '2',
-      title: 'Contract Dispute Between Businesses',
-      type: 'Civil',
-      difficulty: 'Intermediate',
-      description: 'A complex business contract dispute involving breach of agreement claims.',
-      estimatedDuration: '45-60 minutes',
-      keyConcepts: ['Contract Law', 'Damages', 'Negotiation'],
-      image: 'https://images.unsplash.com/photo-1450101499163-8841dcb4ac2e?w=400&h=300&fit=crop'
-    },
-    {
-      id: '3',
-      title: 'Assault in a Public Park',
-      type: 'Criminal',
-      difficulty: 'Advanced',
-      description: 'A violent altercation case with conflicting witness accounts and self-defense claims.',
-      estimatedDuration: '60-90 minutes',
-      keyConcepts: ['Self-Defense', 'Witness Credibility', 'Intent'],
-      image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop'
-    },
-    {
-      id: '4',
-      title: 'Property Damage from Construction',
-      type: 'Civil',
-      difficulty: 'Beginner',
-      description: 'A negligence case involving construction damage to neighboring property.',
-      estimatedDuration: '30-45 minutes',
-      keyConcepts: ['Negligence', 'Property Rights', 'Expert Testimony'],
-      image: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=300&fit=crop'
-    },
-    {
-      id: '5',
-      title: 'Fraudulent Investment Scheme',
-      type: 'Criminal',
-      difficulty: 'Advanced',
-      description: 'A white-collar crime case involving financial fraud and investor deception.',
-      estimatedDuration: '75-90 minutes',
-      keyConcepts: ['Financial Crime', 'Fraud', 'Expert Analysis'],
-      image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop'
-    },
-    {
-      id: '6',
-      title: 'Negligence in a Workplace Accident',
-      type: 'Civil',
-      difficulty: 'Intermediate',
-      description: 'A workplace safety case involving employer negligence and worker injury.',
-      estimatedDuration: '45-60 minutes',
-      keyConcepts: ['Workplace Safety', 'Employer Liability', 'Compensation'],
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop'
-    }
-  ];
+  const categories = ['All', ...CaseService.getCaseCategories()];
 
-  const categories = ['All', 'Criminal', 'Civil', 'Family'];
-  const difficulties = ['All', 'Beginner', 'Intermediate', 'Advanced'];
+  // Load cases on component mount
+  useEffect(() => {
+    const loadCases = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const loadedCases = await CaseService.getAllCases();
+        setCases(loadedCases);
+      } catch (err) {
+        setError('Failed to load cases. Please try again.');
+        console.error('Error loading cases:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    loadCases();
+  }, []);
+
+  // Filter cases based on category and search
   const filteredCases = cases.filter(caseItem => {
-    const categoryMatch = selectedCategory === 'All' || caseItem.type === selectedCategory;
-    const difficultyMatch = selectedDifficulty === 'All' || caseItem.difficulty === selectedDifficulty;
-    return categoryMatch && difficultyMatch;
+    const categoryMatch = selectedCategory === 'All' || 
+      (selectedCategory === 'white-collar' && caseItem.title.toLowerCase().includes('thompson')) ||
+      (selectedCategory === 'violent' && caseItem.title.toLowerCase().includes('rivera')) ||
+      (selectedCategory === 'drug' && caseItem.title.toLowerCase().includes('harris')) ||
+      (selectedCategory === 'property' && caseItem.title.toLowerCase().includes('lopez')) ||
+      (selectedCategory === 'cybercrime' && caseItem.title.toLowerCase().includes('chen'));
+    
+    const searchMatch = searchQuery === '' || 
+      caseItem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      caseItem.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      caseItem.charges.some(charge => charge.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return categoryMatch && searchMatch;
   });
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'status-success';
-      case 'Intermediate': return 'status-warning';
-      case 'Advanced': return 'status-error';
-      default: return 'status-neutral';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'Criminal': return 'text-primary-600';
-      case 'Civil': return 'text-purple-600';
-      case 'Family': return 'text-pink-600';
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'white-collar': return 'text-blue-600';
+      case 'violent': return 'text-red-600';
+      case 'drug': return 'text-orange-600';
+      case 'property': return 'text-green-600';
+      case 'cybercrime': return 'text-purple-600';
       default: return 'text-neutral-600';
     }
   };
 
+  const getCaseCategory = (caseItem: Case): string => {
+    if (caseItem.title.toLowerCase().includes('thompson')) return 'white-collar';
+    if (caseItem.title.toLowerCase().includes('rivera')) return 'violent';
+    if (caseItem.title.toLowerCase().includes('harris')) return 'drug';
+    if (caseItem.title.toLowerCase().includes('lopez')) return 'property';
+    if (caseItem.title.toLowerCase().includes('chen')) return 'cybercrime';
+    return 'criminal';
+  };
+
+  const getDifficultyLevel = (caseItem: Case): string => {
+    // Simple difficulty based on number of charges and evidence
+    const complexity = caseItem.charges.length + caseItem.evidence.length;
+    if (complexity <= 6) return 'Beginner';
+    if (complexity <= 10) return 'Intermediate';
+    return 'Advanced';
+  };
+
+  const handleCasePreview = (caseItem: Case) => {
+    setPreviewCase(caseItem);
+    setIsPreviewOpen(true);
+  };
+
   const handleCaseSelect = (caseId: string) => {
     navigate('/trial-setup', { state: { role: selectedRole, caseId } });
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewCase(null);
   };
 
   return (
@@ -149,7 +132,7 @@ const CaseSelectionPage: React.FC = () => {
         <div className="container mx-auto max-w-7xl">
           {/* Header Section */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-4">
               Select a Case
             </h1>
             <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
@@ -157,9 +140,24 @@ const CaseSelectionPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-8">
-            <div className="flex gap-2">
+          {/* Search and Filters */}
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-4 mb-8">
+            {/* Search Bar */}
+            <div className="relative w-full max-w-md">
+              <input
+                type="text"
+                placeholder="Search cases..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input input-bordered w-full pl-10"
+              />
+              <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Category Filters */}
+            <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
                   key={category}
@@ -168,92 +166,145 @@ const CaseSelectionPage: React.FC = () => {
                     selectedCategory === category ? 'btn-primary' : 'btn-secondary'
                   }`}
                 >
-                  {category}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              {difficulties.map((difficulty) => (
-                <button
-                  key={difficulty}
-                  onClick={() => setSelectedDifficulty(difficulty)}
-                  className={`btn btn-sm ${
-                    selectedDifficulty === difficulty ? 'btn-primary' : 'btn-secondary'
-                  }`}
-                >
-                  {difficulty}
+                  {category === 'All' ? 'All' : CaseService.getCategoryDisplayName(category)}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-primary-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Loading cases...</h3>
+              <p className="text-neutral-600">Please wait while we fetch the available cases.</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Error loading cases</h3>
+              <p className="text-neutral-600 mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="btn btn-primary"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
 
           {/* Cases Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {filteredCases.map((caseItem) => (
-              <div
-                key={caseItem.id}
-                className="card cursor-pointer group hover:shadow-xl transition-all duration-300"
-                onClick={() => handleCaseSelect(caseItem.id)}
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={caseItem.image}
-                    alt={caseItem.title}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <span className={`status-badge ${getDifficultyColor(caseItem.difficulty)}`}>
-                      {caseItem.difficulty}
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <div className="text-white">
-                      <p className="text-sm font-medium">Click to select this case</p>
-                    </div>
-                  </div>
-                </div>
+          {!loading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {filteredCases.map((caseItem) => {
+                const category = getCaseCategory(caseItem);
+                const difficulty = getDifficultyLevel(caseItem);
                 
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-semibold uppercase tracking-wider ${getTypeColor(caseItem.type)}`}>
-                      {caseItem.type}
-                    </span>
-                    <span className="text-sm text-neutral-500">{caseItem.estimatedDuration}</span>
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-3 group-hover:text-primary-600 transition-colors">
-                    {caseItem.title}
-                  </h3>
-                  
-                  <p className="text-neutral-600 text-sm mb-4 line-clamp-2">
-                    {caseItem.description}
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-neutral-700">Key Concepts:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {caseItem.keyConcepts.slice(0, 3).map((concept, index) => (
-                        <span
-                          key={index}
-                          className="text-xs bg-neutral-100 text-neutral-600 px-2 py-1 rounded-full"
-                        >
-                          {concept}
+                return (
+                  <div
+                    key={caseItem.id}
+                    className="card group hover:shadow-xl transition-all duration-300"
+                  >
+                    <div className="relative overflow-hidden bg-gradient-to-br from-primary-50 to-neutral-100 h-48 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
+                        <p className="text-sm text-neutral-600 font-medium">Legal Case</p>
+                      </div>
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <span className={`status-badge ${
+                          difficulty === 'Beginner' ? 'status-success' :
+                          difficulty === 'Intermediate' ? 'status-warning' : 'status-error'
+                        }`}>
+                          {difficulty}
                         </span>
-                      ))}
-                      {caseItem.keyConcepts.length > 3 && (
-                        <span className="text-xs text-neutral-500">
-                          +{caseItem.keyConcepts.length - 3} more
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <p className="text-sm font-medium mb-2">Preview or Select Case</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCasePreview(caseItem);
+                              }}
+                              className="btn btn-sm btn-white"
+                            >
+                              Preview
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCaseSelect(caseItem.id);
+                              }}
+                              className="btn btn-sm btn-primary"
+                            >
+                              Select
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${getCategoryColor(category)}`}>
+                          {CaseService.getCategoryDisplayName(category)}
                         </span>
-                      )}
+                        <span className="text-sm text-neutral-500">
+                          {caseItem.charges.length} charges
+                        </span>
+                      </div>
+                      
+                      <h3 className="text-lg font-semibold text-neutral-900 mb-3 group-hover:text-primary-600 transition-colors">
+                        {caseItem.title}
+                      </h3>
+                      
+                      <p className="text-neutral-600 text-sm mb-4 line-clamp-2">
+                        {caseItem.description}
+                      </p>
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-neutral-700">Charges:</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {caseItem.charges.slice(0, 2).map((charge, index) => (
+                            <span
+                              key={index}
+                              className="text-xs bg-neutral-100 text-neutral-600 px-2 py-1 rounded-full"
+                            >
+                              {charge}
+                            </span>
+                          ))}
+                          {caseItem.charges.length > 2 && (
+                            <span className="text-xs text-neutral-500">
+                              +{caseItem.charges.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* No Results */}
-          {filteredCases.length === 0 && (
+          {!loading && !error && filteredCases.length === 0 && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,7 +312,7 @@ const CaseSelectionPage: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">No cases found</h3>
-              <p className="text-neutral-600">Try adjusting your filters to see more cases.</p>
+              <p className="text-neutral-600">Try adjusting your search or filters to see more cases.</p>
             </div>
           )}
 
@@ -276,6 +327,16 @@ const CaseSelectionPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Case Preview Modal */}
+      {previewCase && (
+        <CasePreviewModal
+          caseData={previewCase}
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
+          onSelect={handleCaseSelect}
+        />
+      )}
     </div>
   );
 };

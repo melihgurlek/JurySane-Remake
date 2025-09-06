@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/Toaster';
-import HomePage from '@/pages/HomePage';
+import LandingPage from '@/pages/LandingPage';
 import TrialPage from '@/pages/TrialPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import Layout from '@/components/layout/Layout';
@@ -10,7 +10,7 @@ function App() {
     <>
       <Layout>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/trial/:sessionId" element={<TrialPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

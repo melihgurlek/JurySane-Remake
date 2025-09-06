@@ -174,7 +174,7 @@ const TrialHistoryPage: React.FC = () => {
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-neutral-900 mb-2">Trial History</h1>
+              <h1 className="text-2xl font-bold text-neutral-900 mb-2">Trial History</h1>
               <p className="text-neutral-600">Review your past trial simulations and performance metrics.</p>
             </div>
             <button className="btn btn-primary mt-4 sm:mt-0">
@@ -189,13 +189,13 @@ const TrialHistoryPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="card">
               <div className="card-body text-center">
-                <div className="text-3xl font-bold text-primary-600 mb-2">{trialSessions.length}</div>
+                <div className="text-2xl font-bold text-primary-600 mb-2">{trialSessions.length}</div>
                 <div className="text-sm text-neutral-600">Total Trials</div>
               </div>
             </div>
             <div className="card">
               <div className="card-body text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">
+                <div className="text-2xl font-bold text-green-600 mb-2">
                   {Math.round(trialSessions.reduce((acc, session) => acc + session.score, 0) / trialSessions.length)}
                 </div>
                 <div className="text-sm text-neutral-600">Average Score</div>
@@ -203,7 +203,7 @@ const TrialHistoryPage: React.FC = () => {
             </div>
             <div className="card">
               <div className="card-body text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
+                <div className="text-2xl font-bold text-blue-600 mb-2">
                   {trialSessions.reduce((acc, session) => acc + session.objectionsHandled, 0)}
                 </div>
                 <div className="text-sm text-neutral-600">Objections Handled</div>
@@ -211,7 +211,7 @@ const TrialHistoryPage: React.FC = () => {
             </div>
             <div className="card">
               <div className="card-body text-center">
-                <div className="text-3xl font-bold text-purple-600 mb-2">
+                <div className="text-2xl font-bold text-purple-600 mb-2">
                   {Math.round(trialSessions.reduce((acc, session) => acc + session.accuracy, 0) / trialSessions.length)}%
                 </div>
                 <div className="text-sm text-neutral-600">Average Accuracy</div>

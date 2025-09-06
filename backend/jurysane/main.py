@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import trial
+from .api.routes import trial, cases
 from .config import settings
 
 # Create FastAPI application
@@ -26,6 +26,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(trial.router, prefix="/api/v1")
+app.include_router(cases.router, prefix="/api/v1")
 
 
 @app.get("/")
