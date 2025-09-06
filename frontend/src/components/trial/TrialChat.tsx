@@ -108,26 +108,26 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-secondary-200 h-full flex flex-col">
+    <div className="trial-chat">
       {/* Header */}
-      <div className="p-4 border-b border-secondary-200">
-        <h2 className="text-lg font-semibold text-secondary-900">
+      <div className="trial-chat-header">
+        <h2 className="trial-chat-title">
           Courtroom Proceedings
         </h2>
-        <p className="text-sm text-secondary-600">
+        <p className="trial-chat-subtitle">
           Interact with AI agents to conduct your trial
         </p>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="trial-chat-messages">
         {session.transcript.length === 0 ? (
-          <div className="text-center py-8">
-            <Bot className="h-12 w-12 text-secondary-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-secondary-900 mb-2">
+          <div className="trial-chat-welcome">
+            <Bot className="trial-chat-welcome-icon" />
+            <h3 className="trial-chat-welcome-title">
               Welcome to the Courtroom
             </h3>
-            <p className="text-secondary-600">
+            <p className="trial-chat-welcome-text">
               Begin by addressing the judge or other participants. 
               Select who you want to speak to and type your message below.
             </p>
@@ -136,26 +136,26 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
           session.transcript.map((message, index) => {
             const isUser = message.metadata?.user_input === true;
             return (
-              <div key={index} className="flex space-x-3">
-                <div className="flex-shrink-0">
+              <div key={index} className="trial-message">
+                <div className="trial-message-icon">
                   {getMessageIcon(message.speaker, isUser)}
                 </div>
-                <div className="flex-1">
+                <div className="trial-message-content">
                   <div className={cn(
-                    'p-4 rounded-lg border',
+                    'trial-message-bubble',
                     getMessageStyle(message.speaker, isUser)
                   )}>
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="text-sm font-medium text-secondary-900">
+                    <div className="trial-message-header">
+                      <h4 className="trial-message-speaker">
                         {message.speaker}
                       </h4>
                       {message.timestamp && (
-                        <span className="text-xs text-secondary-500">
+                        <span className="trial-message-time">
                           {formatTime(message.timestamp)}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-secondary-700 whitespace-pre-wrap">
+                    <p className="trial-message-text">
                       {message.content}
                     </p>
                   </div>
@@ -166,15 +166,15 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         )}
         
         {agentResponseMutation.isPending && (
-          <div className="flex space-x-3">
-            <div className="flex-shrink-0">
-              <Bot className="h-5 w-5 text-secondary-400" />
+          <div className="trial-message">
+            <div className="trial-message-icon">
+              <Bot className="trial-message-icon-bot" />
             </div>
-            <div className="flex-1">
-              <div className="p-4 rounded-lg border bg-secondary-50 border-secondary-200">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                  <span className="text-sm text-secondary-600">
+            <div className="trial-message-content">
+              <div className="trial-message-bubble trial-message-loading">
+                <div className="trial-message-loading-content">
+                  <div className="trial-message-loading-spinner"></div>
+                  <span className="trial-message-loading-text">
                     {formatCaseRole(selectedAgent)} is responding...
                   </span>
                 </div>
@@ -187,22 +187,20 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
       </div>
 
       {/* Input Form */}
-      <div className="p-4 border-t border-secondary-200">
+      <div className="trial-chat-input">
         {/* Agent Selection */}
-        <div className="mb-3">
-          <label className="block text-sm font-medium text-secondary-700 mb-2">
+        <div className="trial-agent-selection">
+          <label className="trial-agent-label">
             Address to:
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="trial-agent-buttons">
             {availableAgents.map((agent) => (
               <button
                 key={agent.key}
                 onClick={() => setSelectedAgent(agent.key)}
                 className={cn(
-                  'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                  selectedAgent === agent.key
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
+                  'trial-agent-button',
+                  selectedAgent === agent.key ? 'trial-agent-button-active' : 'trial-agent-button-inactive'
                 )}
                 title={agent.description}
               >
@@ -213,13 +211,13 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         </div>
 
         {/* Message Input */}
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <div className="flex-1">
+        <form onSubmit={handleSubmit} className="trial-message-form">
+          <div className="trial-message-input-container">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Address the ${formatCaseRole(selectedAgent).toLowerCase()}...`}
-              className="textarea resize-none"
+              className="trial-message-textarea"
               rows={3}
               disabled={agentResponseMutation.isPending}
               onKeyDown={(e) => {
@@ -228,16 +226,16 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
                 }
               }}
             />
-            <p className="text-xs text-secondary-500 mt-1">
+            <p className="trial-message-hint">
               Press Ctrl+Enter to send
             </p>
           </div>
           <button
             type="submit"
             disabled={!input.trim() || agentResponseMutation.isPending}
-            className="btn btn-primary btn-md self-start"
+            className="trial-send-button"
           >
-            <Send className="h-4 w-4" />
+            <Send className="trial-send-icon" />
           </button>
         </form>
       </div>
