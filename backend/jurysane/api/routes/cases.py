@@ -25,26 +25,34 @@ async def get_all_cases():
             status_code=500, detail=f"Failed to load cases: {str(e)}")
 
 
-@router.get("/{case_id}", response_model=Case)
-async def get_case_by_id(case_id: UUID):
-    """Get a specific case by ID.
+@router.get("/search/{query}", response_model=List[Case])
+async def search_cases(query: str):
+    """Search cases by title, description, or charges.
 
     Args:
-        case_id: UUID of the case to retrieve
+        query: Search query string
 
     Returns:
-        The requested case
-
-    Raises:
-        HTTPException: If case not found
+        List of cases matching the search query
     """
     try:
-        return get_case_by_id(str(case_id))
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        all_cases = get_shared_cases()
+        query_lower = query.lower()
+
+        matching_cases = []
+
+        for case in all_cases:
+            # Search in title, description, and charges
+            searchable_text = f"{case.title} {case.description} {' '.join(case.charges)}".lower(
+            )
+
+            if query_lower in searchable_text:
+                matching_cases.append(case)
+
+        return matching_cases
+
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve case: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
 @router.get("/category/{category}", response_model=List[Case])
@@ -89,31 +97,23 @@ async def get_cases_by_category(category: str):
             status_code=500, detail=f"Failed to filter cases: {str(e)}")
 
 
-@router.get("/search/{query}", response_model=List[Case])
-async def search_cases(query: str):
-    """Search cases by title, description, or charges.
+@router.get("/{case_id}", response_model=Case)
+async def get_case_by_id_route(case_id: UUID):
+    """Get a specific case by ID.
 
     Args:
-        query: Search query string
+        case_id: UUID of the case to retrieve
 
     Returns:
-        List of cases matching the search query
+        The requested case
+
+    Raises:
+        HTTPException: If case not found
     """
     try:
-        all_cases = get_shared_cases()
-        query_lower = query.lower()
-
-        matching_cases = []
-
-        for case in all_cases:
-            # Search in title, description, and charges
-            searchable_text = f"{case.title} {case.description} {' '.join(case.charges)}".lower(
-            )
-
-            if query_lower in searchable_text:
-                matching_cases.append(case)
-
-        return matching_cases
-
+        return get_case_by_id(str(case_id))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve case: {str(e)}")

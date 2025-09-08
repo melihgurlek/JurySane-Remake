@@ -21,6 +21,28 @@ const CaseSelectionPage: React.FC = () => {
 
   const categories = ['All', ...CaseService.getCaseCategories()];
 
+  // Consistent category detection (mirrors backend logic)
+  const detectCategory = (caseItem: Case): string => {
+    const text = `${caseItem.title} ${caseItem.description}`.toLowerCase();
+    // Prefer cybercrime over property when "identity theft" or any cyber indicators are present
+    if (text.includes('hacking') || text.includes('cyber') || text.includes('identity theft') || text.includes('chen')) {
+      return 'cybercrime';
+    }
+    if (text.includes('burglary') || text.includes('theft') || text.includes('lopez')) {
+      return 'property';
+    }
+    if (text.includes('embezzlement') || text.includes('fraud') || text.includes('thompson')) {
+      return 'white-collar';
+    }
+    if (text.includes('assault') || text.includes('domestic') || text.includes('violence') || text.includes('rivera')) {
+      return 'violent';
+    }
+    if (text.includes('drug') || text.includes('possession') || text.includes('harris')) {
+      return 'drug';
+    }
+    return 'criminal';
+  };
+
   // Load cases on component mount
   useEffect(() => {
     const loadCases = async () => {
@@ -62,19 +84,19 @@ const CaseSelectionPage: React.FC = () => {
 
         if (hasSearch && !hasCategory) {
           const searchResults = await CaseService.searchCases(searchQuery.trim());
-          if (!isCancelled) setDisplayedCases(searchResults);
+          const sorted = [...searchResults].sort((a, b) => a.title.localeCompare(b.title));
+          if (!isCancelled) setDisplayedCases(sorted);
         } else if (!hasSearch && hasCategory) {
-          const categoryResults = await CaseService.getCasesByCategory(selectedCategory);
-          if (!isCancelled) setDisplayedCases(categoryResults);
+          // Use local filtering for stability
+          const localCategory = allCases.filter(c => detectCategory(c) === selectedCategory);
+          const sorted = [...localCategory].sort((a, b) => a.title.localeCompare(b.title));
+          if (!isCancelled) setDisplayedCases(sorted);
         } else if (hasSearch && hasCategory) {
-          // Intersect server results from search and category endpoints
-          const [searchResults, categoryResults] = await Promise.all([
-            CaseService.searchCases(searchQuery.trim()),
-            CaseService.getCasesByCategory(selectedCategory)
-          ]);
-          const categoryIds = new Set(categoryResults.map(c => c.id));
-          const intersected = searchResults.filter(c => categoryIds.has(c.id));
-          if (!isCancelled) setDisplayedCases(intersected);
+          // Intersect server search with local category classification
+          const searchResults = await CaseService.searchCases(searchQuery.trim());
+          const intersected = searchResults.filter(c => detectCategory(c) === selectedCategory);
+          const sorted = [...intersected].sort((a, b) => a.title.localeCompare(b.title));
+          if (!isCancelled) setDisplayedCases(sorted);
         }
       } catch (err) {
         if (!isCancelled) {
@@ -82,14 +104,15 @@ const CaseSelectionPage: React.FC = () => {
           // Fall back to client-side filtering if server filter fails
           const queryLower = (searchQuery ?? '').toLowerCase();
           const local = allCases.filter(caseItem => {
-            const categoryMatch = selectedCategory === 'All' || getCaseCategory(caseItem) === selectedCategory;
+            const categoryMatch = selectedCategory === 'All' || detectCategory(caseItem) === selectedCategory;
             const searchMatch = queryLower === '' ||
               caseItem.title.toLowerCase().includes(queryLower) ||
               caseItem.description.toLowerCase().includes(queryLower) ||
               caseItem.charges.some(charge => charge.toLowerCase().includes(queryLower));
             return categoryMatch && searchMatch;
           });
-          setDisplayedCases(local);
+          const sorted = [...local].sort((a, b) => a.title.localeCompare(b.title));
+          setDisplayedCases(sorted);
           setError('Some filters could not be applied via server. Showing best local results.');
         }
       } finally {
@@ -103,6 +126,14 @@ const CaseSelectionPage: React.FC = () => {
       clearTimeout(timeoutId);
     };
   }, [searchQuery, selectedCategory, allCases]);
+
+  // Initial alphabetical sort after first load
+  useEffect(() => {
+    if (allCases.length) {
+      const sorted = [...allCases].sort((a, b) => a.title.localeCompare(b.title));
+      setDisplayedCases(sorted);
+    }
+  }, [allCases]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -179,7 +210,18 @@ const CaseSelectionPage: React.FC = () => {
       <main className="py-8 px-4">
         <div className="container mx-auto max-w-7xl">
           {/* Header Section */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 relative">
+            {/* Back button top-left */}
+            <button
+              onClick={() => navigate(-1)}
+              className="absolute left-0 top-0 btn btn-ghost"
+              aria-label="Go back"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back
+            </button>
             <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-4">
               Select a Case
             </h1>
@@ -188,7 +230,7 @@ const CaseSelectionPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Search and Filters */}
+          {/* Search, Filters and Sort */}
           <div className="flex flex-col lg:flex-row items-center justify-center gap-4 mb-8">
             {/* Search Bar */}
             <div className="relative w-full max-w-md">
@@ -218,6 +260,7 @@ const CaseSelectionPage: React.FC = () => {
                 </button>
               ))}
             </div>
+            {/* Default alphabetical sort applied automatically; no explicit sort control */}
           </div>
 
           {/* Loading State */}

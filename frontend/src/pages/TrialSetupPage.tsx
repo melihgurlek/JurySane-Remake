@@ -18,6 +18,8 @@ const TrialSetupPage: React.FC = () => {
   const [aiDifficulty, setAiDifficulty] = useState(50);
   const [trialDuration, setTrialDuration] = useState(60);
   const [notifications, setNotifications] = useState(true);
+  const [openEvidenceIds, setOpenEvidenceIds] = useState<Set<string>>(new Set());
+  const [openWitnessIds, setOpenWitnessIds] = useState<Set<string>>(new Set());
 
   // Fetch case data on component mount
   useEffect(() => {
@@ -197,58 +199,135 @@ const TrialSetupPage: React.FC = () => {
 
             {/* Right Column - Evidence, Witnesses, and Settings */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Evidence Preview */}
+              {/* Evidence */}
               <div className="card">
                 <div className="card-header">
-                  <h2 className="text-xl font-bold text-neutral-900">Evidence Preview</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-neutral-900">Evidence</h2>
+                    <div className="flex gap-2">
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          if (!caseData) return;
+                          setOpenEvidenceIds(new Set(caseData.evidence.map(e => e.id)));
+                        }}
+                      >
+                        Expand all
+                      </button>
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setOpenEvidenceIds(new Set())}
+                      >
+                        Collapse all
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="card-body">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {caseData.evidence.map((item) => (
-                      <div key={item.id} className="group relative overflow-hidden rounded-lg border border-neutral-200">
-                        <div className="w-full h-32 bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                  <div className="divide-y divide-neutral-200">
+                    {caseData.evidence.map((item) => {
+                      const isOpen = openEvidenceIds.has(item.id);
+                      return (
+                        <div key={item.id} className="py-3">
+                          <button
+                            className="w-full flex items-start justify-between text-left"
+                            onClick={() => {
+                              const next = new Set(openEvidenceIds);
+                              if (isOpen) next.delete(item.id); else next.add(item.id);
+                              setOpenEvidenceIds(next);
+                            }}
+                            aria-expanded={isOpen}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${item.is_admitted ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                              <div>
+                                <p className="font-medium text-neutral-900">{item.title}</p>
+                                <p className="text-xs text-neutral-500 capitalize">{item.evidence_type} • submitted by {item.submitted_by}</p>
+                              </div>
+                            </div>
+                            <svg className={`w-4 h-4 text-neutral-500 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {isOpen && (
+                            <div className="mt-3 pl-5 text-sm text-neutral-700">
+                              <p className="mb-2">{item.description}</p>
+                              <div className="bg-neutral-50 border border-neutral-200 rounded p-3 text-xs text-neutral-600">
+                                {item.content}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="p-3">
-                          <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
-                          <p className="text-xs text-neutral-500 mt-1">{item.description}</p>
-                          <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${
-                            item.is_admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {item.is_admitted ? 'Admitted' : 'Pending'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
-              {/* Witness List */}
+              {/* Witnesses */}
               <div className="card">
                 <div className="card-header">
-                  <h2 className="text-xl font-bold text-neutral-900">Witness List</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-neutral-900">Witnesses</h2>
+                    <div className="flex gap-2">
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          if (!caseData) return;
+                          setOpenWitnessIds(new Set(caseData.witnesses.map(w => w.id)));
+                        }}
+                      >
+                        Expand all
+                      </button>
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setOpenWitnessIds(new Set())}
+                      >
+                        Collapse all
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="card-body">
-                  <div className="space-y-4">
-                    {caseData.witnesses.map((witness) => (
-                      <div key={witness.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-neutral-50 transition-colors">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center">
-                          <span className="text-primary-600 font-semibold">
-                            {witness.name.split(' ').map(n => n[0]).join('')}
-                          </span>
+                  <div className="divide-y divide-neutral-200">
+                    {caseData.witnesses.map((witness) => {
+                      const isOpen = openWitnessIds.has(witness.id);
+                      return (
+                        <div key={witness.id} className="py-3">
+                          <button
+                            className="w-full flex items-start justify-between text-left"
+                            onClick={() => {
+                              const next = new Set(openWitnessIds);
+                              if (isOpen) next.delete(witness.id); else next.add(witness.id);
+                              setOpenWitnessIds(next);
+                            }}
+                            aria-expanded={isOpen}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center">
+                                <span className="text-primary-600 text-sm font-semibold">{witness.name.split(' ').map(n => n[0]).join('')}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-neutral-900">{witness.name}</p>
+                                <p className="text-xs text-neutral-500 capitalize">called by {witness.called_by}</p>
+                              </div>
+                            </div>
+                            <svg className={`w-4 h-4 text-neutral-500 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {isOpen && (
+                            <div className="mt-3 pl-5 text-sm text-neutral-700 space-y-2">
+                              <p><span className="font-medium">Background:</span> {witness.background}</p>
+                              <p><span className="font-medium">Knowledge:</span> {witness.knowledge}</p>
+                              {witness.bias && (
+                                <p className="text-orange-700"><span className="font-medium">Potential Bias:</span> {witness.bias}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-neutral-900">{witness.name}</p>
-                          <p className="text-sm text-neutral-600">{witness.called_by}</p>
-                        </div>
-                        <span className="status-badge status-success">
-                          Available
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
