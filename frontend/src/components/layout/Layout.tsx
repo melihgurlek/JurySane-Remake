@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 // Assuming Header and Footer components exist
-import Header from './Header'; 
-import Footer from './Footer';
+// import Header from './Header'; 
+// import Footer from './Footer';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,7 +14,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* <Header className="flex-shrink-0" /> */}
 
       {/* CHANGE: This main area now becomes a flex container that can properly manage its children */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-auto">
         {children}
       </main>
 

@@ -43,36 +43,36 @@ const RoleSelectionPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="py-12 px-4">
+      <main className="py-8 px-4">
         <div className="container mx-auto max-w-6xl">
           {/* Header Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-4">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-3">
               Choose Your Role
             </h1>
-            <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-neutral-600 max-w-2xl mx-auto">
               Select which side you'd like to represent in the trial simulation. Each role offers unique challenges and learning opportunities.
             </p>
           </div>
 
           {/* Role Selection Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Defense Attorney Card */}
             <div 
-              className={`card cursor-pointer transition-all duration-300 ${
+              className={`card cursor-pointer transition-shadow duration-200 ${
                 selectedRole === 'defense' 
-                  ? 'ring-2 ring-primary-500 shadow-xl transform scale-105' 
-                  : 'hover:shadow-lg hover:scale-102'
+                  ? 'ring-2 ring-primary-500 shadow-lg' 
+                  : 'hover:shadow-md'
               }`}
               onClick={() => handleRoleSelect('defense')}
             >
               <div className="relative overflow-hidden">
-                <div className="h-64 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                <div className="h-48 md:h-56 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
                   <div className="text-center text-white">
-                    <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-12 h-12 md:w-14 md:h-14 mx-auto mb-3" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
-                    <h3 className="text-xl font-bold">Defense Attorney</h3>
+                    <h3 className="text-lg md:text-xl font-bold">Defense Attorney</h3>
                   </div>
                 </div>
                 <div className="absolute top-4 right-4">
@@ -86,13 +86,13 @@ const RoleSelectionPage: React.FC = () => {
                 </div>
               </div>
               
-              <div className="p-8">
-                <p className="text-neutral-600 mb-6">
+              <div className="p-6">
+                <p className="text-neutral-600 mb-4 text-sm md:text-base">
                   Represent the defendant, ensuring their rights are protected and presenting a compelling defense strategy.
                 </p>
                 
-                <h4 className="text-lg font-semibold text-neutral-900 mb-4">Key Responsibilities:</h4>
-                <ul className="space-y-3 text-neutral-600">
+                <h4 className="text-base md:text-lg font-semibold text-neutral-900 mb-3">Key Responsibilities:</h4>
+                <ul className="space-y-2 text-neutral-600 text-sm md:text-base">
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
                     <span>Develop a robust defense strategy</span>
@@ -115,20 +115,20 @@ const RoleSelectionPage: React.FC = () => {
 
             {/* Prosecutor Card */}
             <div 
-              className={`card cursor-pointer transition-all duration-300 ${
+              className={`card cursor-pointer transition-shadow duration-200 ${
                 selectedRole === 'prosecutor' 
-                  ? 'ring-2 ring-primary-500 shadow-xl transform scale-105' 
-                  : 'hover:shadow-lg hover:scale-102'
+                  ? 'ring-2 ring-primary-500 shadow-lg' 
+                  : 'hover:shadow-md'
               }`}
               onClick={() => handleRoleSelect('prosecutor')}
             >
               <div className="relative overflow-hidden">
-                <div className="h-64 bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
+                <div className="h-48 md:h-56 bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
                   <div className="text-center text-white">
-                    <svg className="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-12 h-12 md:w-14 md:h-14 mx-auto mb-3" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
-                    <h3 className="text-xl font-bold">Prosecutor</h3>
+                    <h3 className="text-lg md:text-xl font-bold">Prosecutor</h3>
                   </div>
                 </div>
                 <div className="absolute top-4 right-4">
@@ -142,13 +142,13 @@ const RoleSelectionPage: React.FC = () => {
                 </div>
               </div>
               
-              <div className="p-8">
-                <p className="text-neutral-600 mb-6">
+              <div className="p-6">
+                <p className="text-neutral-600 mb-4 text-sm md:text-base">
                   Represent the state, presenting evidence and arguments to prove the defendant's guilt beyond a reasonable doubt.
                 </p>
                 
-                <h4 className="text-lg font-semibold text-neutral-900 mb-4">Key Responsibilities:</h4>
-                <ul className="space-y-3 text-neutral-600">
+                <h4 className="text-base md:text-lg font-semibold text-neutral-900 mb-3">Key Responsibilities:</h4>
+                <ul className="space-y-2 text-neutral-600 text-sm md:text-base">
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-primary-500 rounded-full mt-2 flex-shrink-0"></div>
                     <span>Present a clear opening statement</span>
@@ -170,34 +170,9 @@ const RoleSelectionPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Case Preview Section */}
-          <div className="card mb-12">
-            <div className="card-body">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-primary-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900">Case Preview</h3>
-              </div>
-              <p className="text-neutral-600 mb-4">
-                Review a brief overview of the case details, including charges, key evidence, and witness information. 
-                This preview helps you prepare for your role and understand the context of the trial.
-              </p>
-              <div className="bg-neutral-50 rounded-lg p-4">
-                <h4 className="font-semibold text-neutral-900 mb-2">Sample Case: The People vs. Alex Turner</h4>
-                <p className="text-sm text-neutral-600">
-                  <strong>Charges:</strong> Assault and Battery (Misdemeanor)<br/>
-                  <strong>Facts:</strong> Alex Turner is accused of assaulting a person during an altercation at a local bar. 
-                  The prosecution claims Turner initiated the physical confrontation, while the defense argues self-defense.
-                </p>
-              </div>
-            </div>
-          </div>
-
+         
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/" className="btn btn-secondary btn-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
