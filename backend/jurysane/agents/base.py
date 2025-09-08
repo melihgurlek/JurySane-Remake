@@ -93,9 +93,19 @@ class BaseAgent(ABC):
             Formatted case context
         """
         context_parts = [
-            f"Trial Phase: {trial_session.current_phase.value}",
-            f"User Role: {trial_session.user_role.value}",
+            f"Trial Phase: {trial_session.current_phase.value if hasattr(trial_session.current_phase, 'value') else trial_session.current_phase}",
+            f"User Role: {trial_session.user_role.value if hasattr(trial_session.user_role, 'value') else trial_session.user_role}",
         ]
+
+        # Add case information if available
+        # Note: Case data should be passed through the trial service
+        if hasattr(trial_session, 'case_data') and trial_session.case_data:
+            case = trial_session.case_data
+            context_parts.extend([
+                f"Case: {case.title}",
+                f"Charges: {', '.join(case.charges)}",
+                f"Case Description: {case.description}",
+            ])
 
         # Add recent transcript entries
         if trial_session.transcript:

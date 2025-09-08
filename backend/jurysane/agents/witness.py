@@ -85,8 +85,11 @@ Remember: You are here to tell the truth about what you know, saw, or experience
         messages = self.get_context_messages(trial_session)
         messages.append(HumanMessage(content=prompt))
 
+        phase_value = trial_session.current_phase.value if hasattr(
+            trial_session.current_phase, 'value') else trial_session.current_phase
+
         metadata = {
-            "trial_phase": trial_session.current_phase.value,
+            "trial_phase": phase_value,
             "witness_name": self.witness_name,
             "examination_type": context.get("examination_type") if context else "general",
         }

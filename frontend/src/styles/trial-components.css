@@ -1,0 +1,629 @@
+/* Trial Chat Styles */
+.trial-chat {
+  @apply flex flex-col h-full;
+}
+
+.trial-chat-header {
+  @apply p-4 border-b border-neutral-200 bg-white;
+}
+
+.trial-chat-title {
+  @apply text-lg font-semibold text-neutral-900 mb-1;
+}
+
+.trial-chat-subtitle {
+  @apply text-sm text-neutral-600;
+}
+
+.trial-chat-messages {
+  @apply flex-1 overflow-y-auto p-4 space-y-4;
+}
+
+.trial-chat-welcome {
+  @apply text-center py-8;
+}
+
+.trial-chat-welcome-icon {
+  @apply h-12 w-12 text-neutral-400 mx-auto mb-4;
+}
+
+.trial-chat-welcome-title {
+  @apply text-lg font-semibold text-neutral-900 mb-2;
+}
+
+.trial-chat-welcome-text {
+  @apply text-neutral-600;
+}
+
+.trial-message {
+  @apply flex gap-3 mb-4;
+}
+
+.trial-message-icon {
+  @apply flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium;
+}
+
+.trial-message-content {
+  @apply flex-1 max-w-[80%];
+}
+
+.trial-message-bubble {
+  @apply p-4 rounded-2xl shadow-sm border-0 relative;
+  position: relative;
+  background-color: #e9eef6;
+  color: #1B1C1D;
+  font-family: 'Open Sans', sans-serif;
+}
+
+/* User messages (right side) */
+.trial-message:has(.trial-message-bubble.bg-blue-500) {
+  @apply flex-row-reverse;
+}
+
+.trial-message:has(.trial-message-bubble.bg-blue-500) .trial-message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-left-color: rgb(59 130 246);
+}
+
+/* AI messages (left side) */
+.trial-message:not(:has(.trial-message-bubble.bg-blue-500)) .trial-message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-right-color: rgb(243 244 246);
+}
+
+.trial-message-header {
+  @apply flex items-center justify-between mb-2;
+}
+
+.trial-message-speaker {
+  @apply font-semibold text-sm;
+  color: #1B1C1D;
+  font-family: 'Open Sans', sans-serif;
+}
+
+.trial-message-time {
+  @apply text-xs text-neutral-500;
+}
+
+.trial-message-text {
+  @apply text-sm leading-relaxed;
+  color: #1B1C1D;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  font-family: 'Open Sans', sans-serif;
+}
+
+.trial-message-loading-content {
+  @apply flex items-center gap-3;
+}
+
+.trial-message-loading-spinner {
+  @apply w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin;
+}
+
+.trial-message-loading-text {
+  @apply text-sm text-gray-600;
+}
+
+.trial-chat-input {
+  @apply p-4 border-t border-neutral-200 bg-white space-y-3;
+}
+
+.trial-agent-selection {
+  @apply space-y-2;
+}
+
+.trial-agent-label {
+  @apply text-sm font-medium text-neutral-700;
+}
+
+.trial-agent-buttons {
+  @apply flex flex-wrap gap-2;
+}
+
+.trial-agent-button {
+  @apply px-3 py-1 rounded-md text-sm font-medium transition-colors;
+}
+
+.trial-agent-button-active {
+  @apply bg-primary-100 text-primary-700 border border-primary-200;
+}
+
+.trial-agent-button-inactive {
+  @apply bg-neutral-100 text-neutral-700 hover:bg-neutral-200;
+}
+
+.trial-witness-selection {
+  @apply space-y-2;
+}
+
+.trial-witness-label {
+  @apply text-sm font-medium text-neutral-700;
+}
+
+.trial-witness-select {
+  @apply w-full px-3 py-2 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+.trial-message-form {
+  @apply flex gap-2;
+}
+
+.trial-message-input-container {
+  @apply flex-1;
+}
+
+.trial-message-textarea {
+  @apply w-full px-3 py-2 border border-neutral-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+.trial-message-hint {
+  @apply text-xs text-neutral-500 mt-1;
+}
+
+.trial-send-button {
+  @apply px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2;
+}
+
+.trial-send-icon {
+  @apply h-4 w-4;
+}
+
+/* Phase Manager Styles */
+.phase-manager {
+  @apply space-y-6;
+}
+
+.phase-manager-header {
+  @apply flex items-center justify-between;
+}
+
+.phase-manager-title {
+  @apply text-xl font-semibold text-neutral-900;
+}
+
+.phase-manager-current {
+  @apply flex items-center gap-2;
+}
+
+.phase-manager-current-label {
+  @apply text-sm text-neutral-600;
+}
+
+.phase-manager-current-phase {
+  @apply text-sm font-medium text-primary-600;
+}
+
+.phase-timeline {
+  @apply space-y-4;
+}
+
+.phase-timeline-item {
+  @apply flex items-start gap-4;
+}
+
+.phase-timeline-content {
+  @apply flex items-start gap-3 flex-1;
+}
+
+.phase-timeline-icon {
+  @apply flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center;
+}
+
+.phase-timeline-icon-completed {
+  @apply bg-green-100 text-green-600;
+}
+
+.phase-timeline-icon-current {
+  @apply bg-blue-100 text-blue-600;
+}
+
+.phase-timeline-icon-upcoming {
+  @apply bg-neutral-100 text-neutral-400;
+}
+
+.phase-timeline-details {
+  @apply flex-1;
+}
+
+.phase-timeline-title {
+  @apply font-medium;
+}
+
+.phase-timeline-title-completed {
+  @apply text-green-900;
+}
+
+.phase-timeline-title-current {
+  @apply text-blue-900;
+}
+
+.phase-timeline-title-upcoming {
+  @apply text-neutral-500;
+}
+
+.phase-timeline-description {
+  @apply text-sm text-neutral-600 mt-1;
+}
+
+.phase-timeline-connector {
+  @apply flex items-center justify-center w-6 h-6 text-neutral-400;
+}
+
+.phase-timeline-connector-completed {
+  @apply text-green-400;
+}
+
+.phase-timeline-connector-current {
+  @apply text-blue-400;
+}
+
+.phase-timeline-connector-upcoming {
+  @apply text-neutral-300;
+}
+
+.phase-controls {
+  @apply bg-neutral-50 border border-neutral-200 rounded-lg p-4 flex items-center justify-between;
+}
+
+.phase-controls-info {
+  @apply flex-1;
+}
+
+.phase-controls-title {
+  @apply font-medium text-neutral-900;
+}
+
+.phase-controls-description {
+  @apply text-sm text-neutral-600 mt-1;
+}
+
+.phase-controls-button {
+  @apply px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2;
+}
+
+.phase-completed {
+  @apply text-center py-8 bg-green-50 border border-green-200 rounded-lg;
+}
+
+.phase-completed-title {
+  @apply text-lg font-semibold text-green-900 mt-2;
+}
+
+.phase-completed-description {
+  @apply text-green-700 mt-1;
+}
+
+/* Evidence Manager Styles */
+.evidence-manager {
+  @apply h-full flex flex-col;
+}
+
+.evidence-manager-header {
+  @apply p-6 border-b border-neutral-200 bg-white;
+}
+
+.evidence-manager-title {
+  @apply text-xl font-semibold text-neutral-900 flex items-center gap-2;
+}
+
+.evidence-manager-icon {
+  @apply h-5 w-5;
+}
+
+.evidence-manager-subtitle {
+  @apply text-sm text-neutral-600 mt-1;
+}
+
+.evidence-manager-content {
+  @apply flex-1 overflow-y-auto;
+}
+
+.evidence-list {
+  @apply p-6;
+}
+
+.evidence-empty {
+  @apply text-center py-12;
+}
+
+.evidence-empty-icon {
+  @apply h-12 w-12 text-neutral-400 mx-auto mb-4;
+}
+
+.evidence-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.evidence-item {
+  @apply border border-neutral-200 rounded-lg p-4 cursor-pointer transition-colors hover:border-primary-300;
+}
+
+.evidence-item-selected {
+  @apply border-primary-500 bg-primary-50;
+}
+
+.evidence-item-header {
+  @apply flex items-center justify-between mb-3;
+}
+
+.evidence-item-icon {
+  @apply flex-shrink-0;
+}
+
+.evidence-item-status {
+  @apply flex-shrink-0;
+}
+
+.evidence-status-badge {
+  @apply px-2 py-1 rounded-full text-xs font-medium border;
+}
+
+.evidence-item-content {
+  @apply space-y-2;
+}
+
+.evidence-item-title {
+  @apply font-medium text-neutral-900;
+}
+
+.evidence-item-description {
+  @apply text-sm text-neutral-600;
+}
+
+.evidence-item-meta {
+  @apply flex items-center justify-between text-xs text-neutral-500;
+}
+
+.evidence-item-type {
+  @apply capitalize;
+}
+
+.evidence-item-submitted-by {
+  @apply text-right;
+}
+
+.evidence-item-actions {
+  @apply mt-3;
+}
+
+.evidence-submit-button {
+  @apply w-full px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 text-sm;
+}
+
+.evidence-submission-modal {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+.evidence-submission-content {
+  @apply bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto;
+}
+
+.evidence-submission-header {
+  @apply flex items-center justify-between p-6 border-b border-neutral-200;
+}
+
+.evidence-submission-title {
+  @apply text-lg font-semibold text-neutral-900;
+}
+
+.evidence-submission-close {
+  @apply text-2xl text-neutral-400 hover:text-neutral-600;
+}
+
+.evidence-submission-body {
+  @apply p-6 space-y-4;
+}
+
+.evidence-submission-evidence {
+  @apply bg-neutral-50 border border-neutral-200 rounded-lg p-4;
+}
+
+.evidence-submission-evidence-title {
+  @apply font-medium text-neutral-900;
+}
+
+.evidence-submission-evidence-description {
+  @apply text-sm text-neutral-600 mt-1;
+}
+
+.evidence-submission-evidence-type {
+  @apply text-xs text-neutral-500 mt-2;
+}
+
+.evidence-submission-form {
+  @apply space-y-2;
+}
+
+.evidence-submission-label {
+  @apply text-sm font-medium text-neutral-700;
+}
+
+.evidence-submission-textarea {
+  @apply w-full px-3 py-2 border border-neutral-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+.evidence-submission-hint {
+  @apply text-xs text-neutral-500;
+}
+
+.evidence-submission-footer {
+  @apply flex items-center justify-end gap-3 p-6 border-t border-neutral-200;
+}
+
+.evidence-submission-cancel {
+  @apply px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors;
+}
+
+.evidence-submission-submit {
+  @apply px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2;
+}
+
+/* Trial Notes Styles */
+.trial-notes {
+  @apply h-full flex flex-col;
+}
+
+.trial-notes-header {
+  @apply flex items-center justify-between p-6 border-b border-neutral-200 bg-white;
+}
+
+.trial-notes-title {
+  @apply text-xl font-semibold text-neutral-900 flex items-center gap-2;
+}
+
+.trial-notes-icon {
+  @apply h-5 w-5;
+}
+
+.trial-notes-new-button {
+  @apply px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors;
+}
+
+.trial-notes-content {
+  @apply flex-1 flex overflow-hidden;
+}
+
+.trial-notes-sidebar {
+  @apply w-80 border-r border-neutral-200 bg-white flex flex-col;
+}
+
+.trial-notes-list {
+  @apply flex-1 overflow-y-auto p-4;
+}
+
+.trial-notes-empty {
+  @apply text-center py-8;
+}
+
+.trial-notes-empty-icon {
+  @apply h-12 w-12 text-neutral-400 mx-auto mb-4;
+}
+
+.trial-notes-empty-subtitle {
+  @apply text-sm text-neutral-500 mt-1;
+}
+
+.trial-notes-item {
+  @apply border border-neutral-200 rounded-lg p-4 mb-3 cursor-pointer transition-colors hover:border-primary-300;
+}
+
+.trial-notes-item-selected {
+  @apply border-primary-500 bg-primary-50;
+}
+
+.trial-notes-item-header {
+  @apply flex items-center justify-between mb-2;
+}
+
+.trial-notes-item-title {
+  @apply font-medium text-neutral-900 truncate;
+}
+
+.trial-notes-delete-button {
+  @apply text-neutral-400 hover:text-red-600 transition-colors;
+}
+
+.trial-notes-delete-icon {
+  @apply h-4 w-4;
+}
+
+.trial-notes-item-preview {
+  @apply text-sm text-neutral-600 line-clamp-2;
+}
+
+.trial-notes-item-date {
+  @apply text-xs text-neutral-500 mt-2;
+}
+
+.trial-notes-editor {
+  @apply flex-1 flex flex-col;
+}
+
+.trial-notes-editor-content {
+  @apply flex-1 flex flex-col;
+}
+
+.trial-notes-editor-header {
+  @apply flex items-center justify-between p-4 border-b border-neutral-200 bg-white;
+}
+
+.trial-notes-editor-title {
+  @apply text-lg font-semibold text-neutral-900;
+}
+
+.trial-notes-title-input {
+  @apply text-lg font-semibold text-neutral-900 bg-transparent border-none outline-none w-full;
+}
+
+.trial-notes-editor-actions {
+  @apply flex items-center gap-2;
+}
+
+.trial-notes-save-button {
+  @apply px-3 py-1 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors flex items-center gap-1 text-sm;
+}
+
+.trial-notes-save-icon {
+  @apply h-4 w-4;
+}
+
+.trial-notes-cancel-button {
+  @apply px-3 py-1 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors text-sm;
+}
+
+.trial-notes-edit-button {
+  @apply px-3 py-1 text-primary-600 border border-primary-300 rounded-md hover:bg-primary-50 transition-colors text-sm;
+}
+
+.trial-notes-editor-body {
+  @apply flex-1 p-4;
+}
+
+.trial-notes-content-textarea {
+  @apply w-full h-full p-3 border border-neutral-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+.trial-notes-content-display {
+  @apply w-full h-full p-3 text-sm text-neutral-700 whitespace-pre-wrap;
+}
+
+.trial-notes-empty-content {
+  @apply text-neutral-500 italic;
+}
+
+.trial-notes-editor-footer {
+  @apply flex items-center justify-between p-4 border-t border-neutral-200 bg-neutral-50 text-xs text-neutral-500;
+}
+
+.trial-notes-meta {
+  @apply text-xs text-neutral-500;
+}
+
+.trial-notes-welcome {
+  @apply flex-1 flex flex-col items-center justify-center text-center p-8;
+}
+
+.trial-notes-welcome-icon {
+  @apply h-16 w-16 text-neutral-400 mb-4;
+}
+
+.trial-notes-welcome h3 {
+  @apply text-lg font-semibold text-neutral-900 mb-2;
+}
+
+.trial-notes-welcome p {
+  @apply text-neutral-600;
+}

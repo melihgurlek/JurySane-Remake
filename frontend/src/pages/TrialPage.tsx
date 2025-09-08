@@ -3,7 +3,12 @@ import { Link, useParams } from 'react-router-dom';
 import { trialApi } from '@/lib/api';
 import { Case, TrialSession, UserRole } from '@/types/trial';
 import { CaseService } from '@/services/caseService';
+import TrialChat from '@/components/trial/TrialChat';
+import PhaseManager from '@/components/trial/PhaseManager';
+import EvidenceManager from '@/components/trial/EvidenceManager';
+import TrialNotes from '@/components/trial/TrialNotes';
 import '../styles/design-system.css';
+import '../styles/trial-components.css';
 
 const TrialPageNew: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -45,14 +50,14 @@ const TrialPageNew: React.FC = () => {
   ];
 
   const sidebarItems = [
-    { id: 'case-info', label: 'Case Info', icon: '📋', active: true },
+    { id: 'case-info', label: 'Case Info', icon: '📋' },
     { id: 'evidence', label: 'Evidence Locker', icon: '📁' },
     { id: 'witnesses', label: 'Witness List', icon: '👥' },
+    { id: 'phases', label: 'Trial Progress', icon: '⚖️' },
     { id: 'notes', label: 'My Notes', icon: '📝' }
   ];
 
   const [activeSidebarItem, setActiveSidebarItem] = useState('case-info');
-  const [inputValue, setInputValue] = useState('');
   const [expandedEvidenceIds, setExpandedEvidenceIds] = useState<Set<string>>(new Set());
 
   const getPhaseProgress = () => {
@@ -249,63 +254,65 @@ const TrialPageNew: React.FC = () => {
           </div>
         </aside>
 
-        {/* Main Chat Area with quick replies and input */}
-        <main className="flex-1 flex flex-col bg-white">
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-4">
-              {/* Welcome */}
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-primary-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
-                <div className="flex flex-col items-start">
-                  <p className="text-base font-semibold text-neutral-800">Welcome to the Courtroom</p>
-                  <div className="mt-1 rounded rounded-tl-none bg-white p-3 shadow-sm border border-neutral-200">
-                    <p className="text-base text-neutral-700">Begin by addressing the judge or other participants. Select who you want to speak to and type your message below.</p>
-                  </div>
-                </div>
-              </div>
-              {/* Preset quick messages */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  'Ready to proceed, your Honor.',
-                  'Prosecution may call its first witness.',
-                  'Defense requests a brief recess.',
-                  'Objection, your Honor.'
-                ].map((text, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setInputValue(text)}
-                    className="px-3 py-1 rounded-full text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col bg-white relative">
+          {/* Chat Interface - Always visible and fills the space */}
+          <div className="flex-1 flex flex-col">
+            <TrialChat session={session} onRefresh={refresh} />
           </div>
 
-          {/* Chat Input */}
-          <div className="border-t border-neutral-200 bg-white p-2">
-            <div className="flex gap-2 items-end">
-              <textarea 
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="flex-1 resize-none rounded-md border-neutral-300 bg-neutral-100 text-neutral-800 placeholder-neutral-500 focus:border-primary-500 focus:ring-primary-500 px-3 py-2 min-h-[44px] max-h-[120px] overflow-y-auto text-base" 
-                placeholder="Address the Judge, Prosecutor, Defense Attorney, or Witness..." 
-                rows={1}
-                style={{ height: '44px' }}
+          {/* Overlay content for different sidebar sections */}
+          {activeSidebarItem === 'evidence' && (
+            <div className="absolute inset-0 bg-white z-10">
+              <EvidenceManager
+                session={session}
+                caseEvidence={caseData.evidence}
+                onEvidenceChange={refresh}
               />
-              <button className="flex items-center gap-2 rounded-md bg-primary-600 px-4 py-2 text-base font-semibold text-white transition-colors hover:bg-primary-700 whitespace-nowrap h-11">
-                <span>Send</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                </svg>
-              </button>
             </div>
-          </div>
+          )}
+
+          {activeSidebarItem === 'witnesses' && (
+            <div className="absolute inset-0 bg-white z-10 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-2xl font-bold text-neutral-900 mb-6">Witness List</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {caseData.witnesses.map((witness) => (
+                    <div key={witness.id} className="bg-white border border-neutral-200 rounded-lg p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-neutral-900">{witness.name}</h3>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                          Available
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="font-medium text-neutral-700">Called by:</span>
+                          <p className="text-neutral-900 capitalize">{witness.called_by}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-neutral-700">Background:</span>
+                          <p className="text-neutral-700 text-sm leading-relaxed">{witness.background}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSidebarItem === 'phases' && (
+            <div className="absolute inset-0 bg-white z-10 overflow-y-auto p-6">
+              <PhaseManager session={session} onPhaseChange={refresh} />
+            </div>
+          )}
+
+          {activeSidebarItem === 'notes' && (
+            <div className="absolute inset-0 bg-white z-10">
+              <TrialNotes session={session} />
+            </div>
+          )}
         </main>
       </div>
     </div>

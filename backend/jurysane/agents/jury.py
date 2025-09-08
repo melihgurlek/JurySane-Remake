@@ -66,8 +66,11 @@ Remember: Better to let a guilty person go free than convict an innocent person.
         messages = self.get_context_messages(trial_session)
         messages.append(HumanMessage(content=prompt))
 
+        phase_value = trial_session.current_phase.value if hasattr(
+            trial_session.current_phase, 'value') else trial_session.current_phase
+
         metadata = {
-            "trial_phase": trial_session.current_phase.value,
+            "trial_phase": phase_value,
             "jury_action": context.get("action") if context else "general_response",
         }
 

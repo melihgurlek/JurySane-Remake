@@ -148,3 +148,5 @@ class TrialSession(BaseModel):
         default_factory=datetime.utcnow, description="Trial start time")
     completed_at: Optional[datetime] = Field(
         default=None, description="Trial completion time")
+    case_data: Optional[Case] = Field(
+        default=None, description="Case data for agent context")

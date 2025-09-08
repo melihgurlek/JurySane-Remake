@@ -72,8 +72,11 @@ Remember: One juror with reasonable doubt is all you need for acquittal. Focus o
         messages = self.get_context_messages(trial_session)
         messages.append(HumanMessage(content=prompt))
 
+        phase_value = trial_session.current_phase.value if hasattr(
+            trial_session.current_phase, 'value') else trial_session.current_phase
+
         metadata = {
-            "trial_phase": trial_session.current_phase.value,
+            "trial_phase": phase_value,
             "defense_action": context.get("action") if context else "general_response",
         }
 

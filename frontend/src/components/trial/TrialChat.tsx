@@ -6,6 +6,7 @@ import { trialApi } from '@/lib/api';
 import { toast } from '@/components/ui/Toaster';
 import { formatTime, formatCaseRole } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import '../../styles/trial-components.css';
 
 interface TrialChatProps {
   session: TrialSession;
@@ -15,18 +16,20 @@ interface TrialChatProps {
 const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
   const [input, setInput] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<CaseRole>(CaseRole.JUDGE);
+  const [selectedWitness, setSelectedWitness] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const agentResponseMutation = useMutation({
     mutationFn: ({ sessionId, request }: { sessionId: string; request: AgentPromptRequest }) =>
       trialApi.getAgentResponse(sessionId, request),
     onSuccess: () => {
-      setInput('');
       onRefresh();
       toast.success('Response received');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to get agent response');
+      console.error('Agent response error:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to get agent response';
+      toast.error(errorMessage);
     },
   });
 
@@ -38,30 +41,57 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
     scrollToBottom();
   }, [session.transcript]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || agentResponseMutation.isPending) return;
 
-    // Add user message to transcript first
-    trialApi.addTranscriptEntry(
-      session.id,
-      `${formatCaseRole(session.user_role === 'defense' ? CaseRole.DEFENSE : CaseRole.PROSECUTOR)} (You)`,
-      input.trim(),
-      { user_input: true }
-    ).then(() => {
+    const userMessage = input.trim();
+    const userRoleString = session.user_role === 'defense' ? 'defense' : 'prosecutor';
+    const speaker = `${formatCaseRole(userRoleString)} (You)`;
+
+    try {
+      // Add user message to transcript first
+      console.log('Adding transcript entry:', { sessionId: session.id, speaker, content: userMessage });
+      const updatedSession = await trialApi.addTranscriptEntry(
+        session.id,
+        speaker,
+        userMessage,
+        { user_input: true }
+      );
+      console.log('Transcript entry added successfully, updated session:', updatedSession);
+      console.log('Transcript length:', updatedSession.transcript.length);
+
+      // Refresh the session to show the new message
+      onRefresh();
+
+      // Clear input immediately for better UX
+      setInput('');
+
       // Then get agent response
+      const context: any = {
+        trial_phase: session.current_phase,
+        user_role: session.user_role,
+      };
+
+      // Add witness context if talking to a witness
+      if (selectedAgent === CaseRole.WITNESS && selectedWitness) {
+        context.witness_name = selectedWitness;
+      }
+
+      console.log('Getting agent response:', { sessionId: session.id, agentRole: selectedAgent, context });
       agentResponseMutation.mutate({
         sessionId: session.id,
         request: {
-          prompt: input.trim(),
+          prompt: userMessage,
           agent_role: selectedAgent,
-          context: {
-            trial_phase: session.current_phase,
-            user_role: session.user_role,
-          },
+          context,
         },
       });
-    });
+    } catch (error: any) {
+      console.error('Failed to add transcript entry:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to send message';
+      toast.error(errorMessage);
+    }
   };
 
   const getMessageIcon = (speaker: string, isUser: boolean) => {
@@ -73,26 +103,29 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
 
   const getMessageStyle = (speaker: string, isUser: boolean) => {
     if (isUser) {
-      return 'bg-primary-50 border-primary-200';
+      return {
+        icon: 'bg-blue-600',
+        iconText: 'U',
+      };
     }
     
     // Different colors for different AI agents
-    const agentColors: Record<string, string> = {
-      judge: 'bg-purple-50 border-purple-200',
-      prosecutor: 'bg-red-50 border-red-200',
-      defense: 'bg-blue-50 border-blue-200',
-      jury: 'bg-green-50 border-green-200',
-      witness: 'bg-yellow-50 border-yellow-200',
+    const agentStyles: Record<string, { icon: string; iconText: string }> = {
+      judge: { icon: 'bg-purple-500', iconText: 'J' },
+      prosecutor: { icon: 'bg-red-500', iconText: 'P' },
+      defense: { icon: 'bg-blue-500', iconText: 'D' },
+      jury: { icon: 'bg-green-500', iconText: 'J' },
+      witness: { icon: 'bg-yellow-500', iconText: 'W' },
     };
 
     const agentKey = speaker.toLowerCase();
-    for (const [key, color] of Object.entries(agentColors)) {
+    for (const [key, style] of Object.entries(agentStyles)) {
       if (agentKey.includes(key)) {
-        return color;
+        return style;
       }
     }
     
-    return 'bg-secondary-50 border-secondary-200';
+    return { icon: 'bg-gray-500', iconText: 'A' };
   };
 
   const availableAgents = [
@@ -107,20 +140,15 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
     return agent.key !== userRole;
   });
 
-  return (
-    <div className="trial-chat">
-      {/* Header */}
-      <div className="trial-chat-header">
-        <h2 className="trial-chat-title">
-          Courtroom Proceedings
-        </h2>
-        <p className="trial-chat-subtitle">
-          Interact with AI agents to conduct your trial
-        </p>
-      </div>
+  // Get available witnesses for witness selection
+  const availableWitnesses = session.participants
+    .filter(p => p.role === CaseRole.WITNESS)
+    .map(p => ({ name: p.name, description: p.description || 'Witness' }));
 
+  return (
+    <div className="trial-chat h-full flex flex-col">
       {/* Messages */}
-      <div className="trial-chat-messages">
+      <div className="trial-chat-messages flex-1">
         {session.transcript.length === 0 ? (
           <div className="trial-chat-welcome">
             <Bot className="trial-chat-welcome-icon" />
@@ -135,16 +163,16 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         ) : (
           session.transcript.map((message, index) => {
             const isUser = message.metadata?.user_input === true;
+            const messageStyle = getMessageStyle(message.speaker, isUser);
             return (
               <div key={index} className="trial-message">
-                <div className="trial-message-icon">
-                  {getMessageIcon(message.speaker, isUser)}
+                <div className={cn("trial-message-icon", messageStyle.icon)}>
+                  <span className="text-white text-sm font-medium">
+                    {messageStyle.iconText}
+                  </span>
                 </div>
                 <div className="trial-message-content">
-                  <div className={cn(
-                    'trial-message-bubble',
-                    getMessageStyle(message.speaker, isUser)
-                  )}>
+                  <div className="trial-message-bubble">
                     <div className="trial-message-header">
                       <h4 className="trial-message-speaker">
                         {message.speaker}
@@ -167,11 +195,11 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         
         {agentResponseMutation.isPending && (
           <div className="trial-message">
-            <div className="trial-message-icon">
-              <Bot className="trial-message-icon-bot" />
+            <div className="trial-message-icon bg-gray-500">
+              <span className="text-white text-sm font-medium">A</span>
             </div>
             <div className="trial-message-content">
-              <div className="trial-message-bubble trial-message-loading">
+              <div className="trial-message-bubble">
                 <div className="trial-message-loading-content">
                   <div className="trial-message-loading-spinner"></div>
                   <span className="trial-message-loading-text">
@@ -210,16 +238,41 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
           </div>
         </div>
 
+        {/* Witness Selection */}
+        {selectedAgent === CaseRole.WITNESS && availableWitnesses.length > 0 && (
+          <div className="trial-witness-selection">
+            <label className="trial-witness-label">
+              Select witness:
+            </label>
+            <select
+              value={selectedWitness}
+              onChange={(e) => setSelectedWitness(e.target.value)}
+              className="trial-witness-select"
+            >
+              <option value="">Choose a witness...</option>
+              {availableWitnesses.map((witness) => (
+                <option key={witness.name} value={witness.name}>
+                  {witness.name} - {witness.description}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Message Input */}
         <form onSubmit={handleSubmit} className="trial-message-form">
           <div className="trial-message-input-container">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Address the ${formatCaseRole(selectedAgent).toLowerCase()}...`}
+              placeholder={
+                selectedAgent === CaseRole.WITNESS && selectedWitness
+                  ? `Question ${selectedWitness}...`
+                  : `Address the ${formatCaseRole(selectedAgent).toLowerCase()}...`
+              }
               className="trial-message-textarea"
               rows={3}
-              disabled={agentResponseMutation.isPending}
+              disabled={agentResponseMutation.isPending || (selectedAgent === CaseRole.WITNESS && !selectedWitness)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   handleSubmit(e);
@@ -232,7 +285,7 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
           </div>
           <button
             type="submit"
-            disabled={!input.trim() || agentResponseMutation.isPending}
+            disabled={!input.trim() || agentResponseMutation.isPending || (selectedAgent === CaseRole.WITNESS && !selectedWitness)}
             className="trial-send-button"
           >
             <Send className="trial-send-icon" />

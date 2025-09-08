@@ -1,6 +1,6 @@
 """Service for managing trial sessions and agent interactions."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 from ..agents import DefenseAgent, JudgeAgent, JuryAgent, ProsecutorAgent, WitnessAgent
@@ -150,8 +150,53 @@ class TrialService:
         if not session:
             raise ValueError(f"Trial session {session_id} not found")
 
+        # Validate phase transition
+        current_phase = session.current_phase
+        if not self._is_valid_phase_transition(current_phase, next_phase):
+            current_str = current_phase.value if hasattr(
+                current_phase, 'value') else current_phase
+            next_str = next_phase.value if hasattr(
+                next_phase, 'value') else next_phase
+            raise ValueError(
+                f"Invalid phase transition from {current_str} to {next_str}")
+
+        # Add phase transition to transcript
+        current_str = current_phase.value if hasattr(
+            current_phase, 'value') else current_phase
+        next_str = next_phase.value if hasattr(
+            next_phase, 'value') else next_phase
+        await self.add_transcript_entry(
+            session_id,
+            "Court Clerk",
+            f"Trial phase advanced from {current_str.replace('_', ' ').title()} to {next_str.replace('_', ' ').title()}",
+            {"phase_transition": True, "from_phase": current_str, "to_phase": next_str}
+        )
+
         session.current_phase = next_phase
         return session
+
+    def _is_valid_phase_transition(self, current: TrialPhase, next_phase: TrialPhase) -> bool:
+        """Check if a phase transition is valid.
+
+        Args:
+            current: Current trial phase
+            next_phase: Proposed next phase
+
+        Returns:
+            True if transition is valid
+        """
+        # Define valid phase transitions
+        valid_transitions = {
+            TrialPhase.SETUP: [TrialPhase.OPENING_STATEMENTS],
+            TrialPhase.OPENING_STATEMENTS: [TrialPhase.WITNESS_EXAMINATION],
+            TrialPhase.WITNESS_EXAMINATION: [TrialPhase.CLOSING_ARGUMENTS],
+            TrialPhase.CLOSING_ARGUMENTS: [TrialPhase.JURY_DELIBERATION],
+            TrialPhase.JURY_DELIBERATION: [TrialPhase.VERDICT],
+            TrialPhase.VERDICT: [TrialPhase.COMPLETED],
+            TrialPhase.COMPLETED: []  # No further transitions from completed
+        }
+
+        return next_phase in valid_transitions.get(current, [])
 
     async def add_transcript_entry(
         self,
@@ -182,11 +227,13 @@ class TrialService:
             "speaker": speaker,
             "content": content,
             "timestamp": "",  # Will be set by the model
-            "phase": session.current_phase.value,
+            "phase": session.current_phase.value if hasattr(session.current_phase, 'value') else session.current_phase,
             "metadata": metadata or {},
         }
 
         session.transcript.append(transcript_entry)
+        print(f"Added transcript entry: {transcript_entry}")
+        print(f"Session transcript length: {len(session.transcript)}")
         return session
 
     def _create_judge_agent(self) -> JudgeAgent:
@@ -226,7 +273,7 @@ class TrialService:
     async def get_agent_response(
         self,
         session_id: UUID,
-        agent_role: CaseRole,
+        agent_role: Union[CaseRole, str],
         prompt: str,
         context: Optional[Dict] = None,
     ) -> str:
@@ -244,9 +291,22 @@ class TrialService:
         Raises:
             ValueError: If session not found or invalid agent role
         """
+        # Convert string to CaseRole enum if needed
+        if isinstance(agent_role, str):
+            try:
+                agent_role = CaseRole(agent_role.lower())
+            except ValueError:
+                raise ValueError(f"Invalid agent role: {agent_role}")
+
         session = self.active_sessions.get(session_id)
         if not session:
             raise ValueError(f"Trial session {session_id} not found")
+
+        # Get case data and attach to session for context
+        case = await self.get_case(session.case_id)
+        if case:
+            # Add case data to session for agent context
+            session.case_data = case
 
         # Create appropriate agent
         if agent_role == CaseRole.JUDGE:
@@ -263,7 +323,6 @@ class TrialService:
             if not witness_name:
                 raise ValueError("Witness name required for witness agent")
 
-            case = await self.get_case(session.case_id)
             if not case:
                 raise ValueError(f"Case {session.case_id} not found")
 
@@ -280,14 +339,165 @@ class TrialService:
         response = await agent.respond(prompt, session, context)
 
         # Add to transcript
+        agent_name = agent_role.value.title() if hasattr(
+            agent_role, 'value') else agent_role.title()
         await self.add_transcript_entry(
             session_id,
-            f"{agent_role.value.title()}",
+            agent_name,
             response.content,
             {"confidence": response.confidence, "metadata": response.metadata},
         )
 
         return response.content
+
+    async def submit_evidence(
+        self,
+        session_id: UUID,
+        evidence_id: str,
+        submitted_by: str,
+        description: str,
+    ) -> TrialSession:
+        """Submit evidence for admission.
+
+        Args:
+            session_id: Session ID
+            evidence_id: ID of the evidence being submitted
+            submitted_by: Who is submitting the evidence
+            description: Description of the evidence
+
+        Returns:
+            Updated trial session
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.active_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Trial session {session_id} not found")
+
+        # Add evidence submission to transcript
+        await self.add_transcript_entry(
+            session_id,
+            submitted_by,
+            f"Your Honor, I would like to submit evidence for admission: {description}",
+            {"evidence_submission": True, "evidence_id": evidence_id,
+                "submitted_by": submitted_by}
+        )
+
+        return session
+
+    async def rule_on_evidence(
+        self,
+        session_id: UUID,
+        evidence_id: str,
+        ruling: str,
+        reason: str,
+    ) -> TrialSession:
+        """Judge rules on evidence admission.
+
+        Args:
+            session_id: Session ID
+            evidence_id: ID of the evidence
+            ruling: "admitted" or "rejected"
+            reason: Reason for the ruling
+
+        Returns:
+            Updated trial session
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.active_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Trial session {session_id} not found")
+
+        # Add ruling to transcript
+        await self.add_transcript_entry(
+            session_id,
+            "Judge",
+            f"Evidence {evidence_id} is {ruling}. {reason}",
+            {"evidence_ruling": True, "evidence_id": evidence_id,
+                "ruling": ruling, "reason": reason}
+        )
+
+        # Update evidence status
+        if ruling == "admitted":
+            if evidence_id not in session.evidence_admitted:
+                session.evidence_admitted.append(evidence_id)
+
+        return session
+
+    async def raise_objection(
+        self,
+        session_id: UUID,
+        objection_type: str,
+        reason: str,
+        raised_by: str,
+    ) -> TrialSession:
+        """Raise an objection during trial.
+
+        Args:
+            session_id: Session ID
+            objection_type: Type of objection
+            reason: Reason for the objection
+            raised_by: Who raised the objection
+
+        Returns:
+            Updated trial session
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.active_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Trial session {session_id} not found")
+
+        # Add objection to transcript
+        await self.add_transcript_entry(
+            session_id,
+            raised_by,
+            f"Objection, Your Honor! {objection_type}: {reason}",
+            {"objection": True, "objection_type": objection_type,
+                "reason": reason, "raised_by": raised_by}
+        )
+
+        return session
+
+    async def rule_on_objection(
+        self,
+        session_id: UUID,
+        objection_id: str,
+        ruling: str,
+        reason: str,
+    ) -> TrialSession:
+        """Judge rules on an objection.
+
+        Args:
+            session_id: Session ID
+            objection_id: ID of the objection
+            ruling: "sustained" or "overruled"
+            reason: Reason for the ruling
+
+        Returns:
+            Updated trial session
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = self.active_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Trial session {session_id} not found")
+
+        # Add ruling to transcript
+        await self.add_transcript_entry(
+            session_id,
+            "Judge",
+            f"Objection {ruling}. {reason}",
+            {"objection_ruling": True, "objection_id": objection_id,
+                "ruling": ruling, "reason": reason}
+        )
+
+        return session
 
     async def complete_trial(
         self,

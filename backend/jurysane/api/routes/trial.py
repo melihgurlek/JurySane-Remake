@@ -219,12 +219,17 @@ async def advance_trial_phase(
         ) from e
 
 
+class AddTranscriptRequest(BaseModel):
+    """Request to add transcript entry."""
+    speaker: str
+    content: str
+    metadata: Optional[Dict] = None
+
+
 @router.post("/{session_id}/transcript", response_model=TrialSession)
 async def add_transcript_entry(
     session_id: UUID,
-    speaker: str,
-    content: str,
-    metadata: Optional[Dict] = None,
+    request: AddTranscriptRequest,
     trial_service: TrialService = Depends(get_trial_service),
 ) -> TrialSession:
     """Add an entry to the trial transcript.
@@ -242,9 +247,9 @@ async def add_transcript_entry(
     try:
         session = await trial_service.add_transcript_entry(
             session_id=session_id,
-            speaker=speaker,
-            content=content,
-            metadata=metadata,
+            speaker=request.speaker,
+            content=request.content,
+            metadata=request.metadata,
         )
         return session
     except ValueError as e:
@@ -315,3 +320,177 @@ async def get_trial_transcript(
         )
 
     return session.transcript
+
+
+# Evidence Management
+class SubmitEvidenceRequest(BaseModel):
+    """Request to submit evidence."""
+    evidence_id: str
+    submitted_by: str
+    description: str
+
+
+class RuleOnEvidenceRequest(BaseModel):
+    """Request to rule on evidence."""
+    evidence_id: str
+    ruling: str  # "admitted" or "rejected"
+    reason: str
+
+
+@router.post("/{session_id}/evidence/submit", response_model=TrialSession)
+async def submit_evidence(
+    session_id: UUID,
+    request: SubmitEvidenceRequest,
+    trial_service: TrialService = Depends(get_trial_service),
+) -> TrialSession:
+    """Submit evidence for admission.
+
+    Args:
+        session_id: Trial session ID
+        request: Evidence submission request
+        trial_service: Trial service instance
+
+    Returns:
+        Updated trial session
+    """
+    try:
+        session = await trial_service.submit_evidence(
+            session_id=session_id,
+            evidence_id=request.evidence_id,
+            submitted_by=request.submitted_by,
+            description=request.description,
+        )
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit evidence: {str(e)}",
+        ) from e
+
+
+@router.post("/{session_id}/evidence/rule", response_model=TrialSession)
+async def rule_on_evidence(
+    session_id: UUID,
+    request: RuleOnEvidenceRequest,
+    trial_service: TrialService = Depends(get_trial_service),
+) -> TrialSession:
+    """Judge rules on evidence admission.
+
+    Args:
+        session_id: Trial session ID
+        request: Evidence ruling request
+        trial_service: Trial service instance
+
+    Returns:
+        Updated trial session
+    """
+    try:
+        session = await trial_service.rule_on_evidence(
+            session_id=session_id,
+            evidence_id=request.evidence_id,
+            ruling=request.ruling,
+            reason=request.reason,
+        )
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to rule on evidence: {str(e)}",
+        ) from e
+
+
+# Objection Management
+class RaiseObjectionRequest(BaseModel):
+    """Request to raise an objection."""
+    objection_type: str
+    reason: str
+    raised_by: str
+
+
+class RuleOnObjectionRequest(BaseModel):
+    """Request to rule on an objection."""
+    objection_id: str
+    ruling: str  # "sustained" or "overruled"
+    reason: str
+
+
+@router.post("/{session_id}/objection/raise", response_model=TrialSession)
+async def raise_objection(
+    session_id: UUID,
+    request: RaiseObjectionRequest,
+    trial_service: TrialService = Depends(get_trial_service),
+) -> TrialSession:
+    """Raise an objection during trial.
+
+    Args:
+        session_id: Trial session ID
+        request: Objection request
+        trial_service: Trial service instance
+
+    Returns:
+        Updated trial session
+    """
+    try:
+        session = await trial_service.raise_objection(
+            session_id=session_id,
+            objection_type=request.objection_type,
+            reason=request.reason,
+            raised_by=request.raised_by,
+        )
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to raise objection: {str(e)}",
+        ) from e
+
+
+@router.post("/{session_id}/objection/rule", response_model=TrialSession)
+async def rule_on_objection(
+    session_id: UUID,
+    request: RuleOnObjectionRequest,
+    trial_service: TrialService = Depends(get_trial_service),
+) -> TrialSession:
+    """Judge rules on an objection.
+
+    Args:
+        session_id: Trial session ID
+        request: Objection ruling request
+        trial_service: Trial service instance
+
+    Returns:
+        Updated trial session
+    """
+    try:
+        session = await trial_service.rule_on_objection(
+            session_id=session_id,
+            objection_id=request.objection_id,
+            ruling=request.ruling,
+            reason=request.reason,
+        )
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to rule on objection: {str(e)}",
+        ) from e

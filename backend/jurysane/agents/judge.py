@@ -56,8 +56,11 @@ You must make decisions that serve justice and maintain the integrity of the leg
         messages.append(HumanMessage(content=prompt))
 
         # Add specific context for judicial decisions
+        phase_value = trial_session.current_phase.value if hasattr(
+            trial_session.current_phase, 'value') else trial_session.current_phase
+
         metadata = {
-            "trial_phase": trial_session.current_phase.value,
+            "trial_phase": phase_value,
             "judge_action": context.get("action") if context else "general_response",
         }
 
