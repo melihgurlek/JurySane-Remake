@@ -10,7 +10,8 @@ const CaseSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const selectedRole = location.state?.role || 'defense';
   
-  const [cases, setCases] = useState<Case[]>([]);
+  const [allCases, setAllCases] = useState<Case[]>([]);
+  const [displayedCases, setDisplayedCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -27,7 +28,8 @@ const CaseSelectionPage: React.FC = () => {
         setLoading(true);
         setError(null);
         const loadedCases = await CaseService.getAllCases();
-        setCases(loadedCases);
+        setAllCases(loadedCases);
+        setDisplayedCases(loadedCases);
       } catch (err) {
         setError('Failed to load cases. Please try again.');
         console.error('Error loading cases:', err);
@@ -39,22 +41,68 @@ const CaseSelectionPage: React.FC = () => {
     loadCases();
   }, []);
 
-  // Filter cases based on category and search
-  const filteredCases = cases.filter(caseItem => {
-    const categoryMatch = selectedCategory === 'All' || 
-      (selectedCategory === 'white-collar' && caseItem.title.toLowerCase().includes('thompson')) ||
-      (selectedCategory === 'violent' && caseItem.title.toLowerCase().includes('rivera')) ||
-      (selectedCategory === 'drug' && caseItem.title.toLowerCase().includes('harris')) ||
-      (selectedCategory === 'property' && caseItem.title.toLowerCase().includes('lopez')) ||
-      (selectedCategory === 'cybercrime' && caseItem.title.toLowerCase().includes('chen'));
-    
-    const searchMatch = searchQuery === '' || 
-      caseItem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      caseItem.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      caseItem.charges.some(charge => charge.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    return categoryMatch && searchMatch;
-  });
+  // Debounced server-side filtering when search/category changes
+  useEffect(() => {
+    // If neither search nor category filter is applied, show all
+    if ((searchQuery ?? '').trim() === '' && (selectedCategory === 'All')) {
+      setDisplayedCases(allCases);
+      return;
+    }
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const hasSearch = (searchQuery ?? '').trim() !== '';
+        const hasCategory = selectedCategory !== 'All';
+
+        if (hasSearch && !hasCategory) {
+          const searchResults = await CaseService.searchCases(searchQuery.trim());
+          if (!isCancelled) setDisplayedCases(searchResults);
+        } else if (!hasSearch && hasCategory) {
+          const categoryResults = await CaseService.getCasesByCategory(selectedCategory);
+          if (!isCancelled) setDisplayedCases(categoryResults);
+        } else if (hasSearch && hasCategory) {
+          // Intersect server results from search and category endpoints
+          const [searchResults, categoryResults] = await Promise.all([
+            CaseService.searchCases(searchQuery.trim()),
+            CaseService.getCasesByCategory(selectedCategory)
+          ]);
+          const categoryIds = new Set(categoryResults.map(c => c.id));
+          const intersected = searchResults.filter(c => categoryIds.has(c.id));
+          if (!isCancelled) setDisplayedCases(intersected);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Error applying filters:', err);
+          // Fall back to client-side filtering if server filter fails
+          const queryLower = (searchQuery ?? '').toLowerCase();
+          const local = allCases.filter(caseItem => {
+            const categoryMatch = selectedCategory === 'All' || getCaseCategory(caseItem) === selectedCategory;
+            const searchMatch = queryLower === '' ||
+              caseItem.title.toLowerCase().includes(queryLower) ||
+              caseItem.description.toLowerCase().includes(queryLower) ||
+              caseItem.charges.some(charge => charge.toLowerCase().includes(queryLower));
+            return categoryMatch && searchMatch;
+          });
+          setDisplayedCases(local);
+          setError('Some filters could not be applied via server. Showing best local results.');
+        }
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    }, 300); // debounce
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [searchQuery, selectedCategory, allCases]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -207,7 +255,7 @@ const CaseSelectionPage: React.FC = () => {
           {/* Cases Grid */}
           {!loading && !error && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {filteredCases.map((caseItem) => {
+              {displayedCases.map((caseItem) => {
                 const category = getCaseCategory(caseItem);
                 const difficulty = getDifficultyLevel(caseItem);
                 
@@ -304,7 +352,7 @@ const CaseSelectionPage: React.FC = () => {
           )}
 
           {/* No Results */}
-          {!loading && !error && filteredCases.length === 0 && (
+          {!loading && !error && displayedCases.length === 0 && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
