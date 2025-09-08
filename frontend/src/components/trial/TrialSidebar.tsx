@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, FileText, Gavel, RefreshCw } from 'lucide-react';
-import { TrialSession } from '@/types/trial';
+import { TrialSession, CaseRole, Case } from '@/types/trial';
 import { formatCaseRole, formatTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { CaseService } from '@/services/caseService';
 
 interface TrialSidebarProps {
   session: TrialSession;
@@ -13,6 +14,21 @@ type TabType = 'participants' | 'evidence' | 'transcript';
 
 const TrialSidebar = ({ session, onRefresh }: TrialSidebarProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('participants');
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [loadingCase, setLoadingCase] = useState<boolean>(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingCase(true);
+        const c = await CaseService.getCaseById(session.case_id);
+        setCaseData(c);
+      } finally {
+        setLoadingCase(false);
+      }
+    };
+    load();
+  }, [session.case_id]);
 
   const tabs = [
     { key: 'participants' as TabType, label: 'Participants', icon: Users },
@@ -35,6 +51,15 @@ const TrialSidebar = ({ session, onRefresh }: TrialSidebarProps) => {
             <p className="text-xs text-secondary-600">
               {formatCaseRole(participant.role)}
             </p>
+            {participant.role === CaseRole.WITNESS && caseData && (
+              (() => {
+                const w = caseData.witnesses.find(w => w.name === participant.name);
+                if (!w) return null;
+                return (
+                  <p className="text-xs text-secondary-500 mt-1 line-clamp-2">{w.background}</p>
+                );
+              })()
+            )}
           </div>
           {!participant.is_ai && (
             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
@@ -48,21 +73,29 @@ const TrialSidebar = ({ session, onRefresh }: TrialSidebarProps) => {
 
   const renderEvidence = () => (
     <div className="space-y-3">
-      {session.evidence_admitted.length === 0 ? (
-        <p className="text-sm text-secondary-500 text-center py-4">
-          No evidence admitted yet
-        </p>
+      {loadingCase && (
+        <p className="text-sm text-secondary-500 text-center py-4">Loading evidence...</p>
+      )}
+      {caseData && caseData.evidence.length > 0 ? (
+        caseData.evidence.map((ev) => {
+          const admitted = session.evidence_admitted.includes(ev.id);
+          return (
+            <div key={ev.id} className="p-3 bg-secondary-50 rounded-lg border border-secondary-200">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-secondary-900 truncate">{ev.title}</p>
+                  <p className="text-xs text-secondary-600 mt-1 line-clamp-2">{ev.description}</p>
+                </div>
+                <span className={cn('text-xs px-2 py-1 rounded-full flex-shrink-0', admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700')}>
+                  {admitted ? 'Admitted' : 'Pending'}
+                </span>
+              </div>
+              <div className="text-[11px] text-secondary-500 mt-1 capitalize">{ev.evidence_type} • submitted by {ev.submitted_by}</div>
+            </div>
+          );
+        })
       ) : (
-        session.evidence_admitted.map((evidenceId) => (
-          <div key={evidenceId} className="p-3 bg-secondary-50 rounded-lg">
-            <p className="text-sm font-medium text-secondary-900">
-              Evidence #{evidenceId.slice(-6)}
-            </p>
-            <p className="text-xs text-secondary-600 mt-1">
-              Admitted to trial
-            </p>
-          </div>
-        ))
+        <p className="text-sm text-secondary-500 text-center py-4">No evidence listed for this case</p>
       )}
     </div>
   );

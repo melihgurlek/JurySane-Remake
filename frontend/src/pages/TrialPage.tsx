@@ -1,22 +1,40 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { trialApi } from '@/lib/api';
+import { Case, TrialSession, UserRole } from '@/types/trial';
+import { CaseService } from '@/services/caseService';
 import '../styles/design-system.css';
 
 const TrialPageNew: React.FC = () => {
-  const location = useLocation();
-  const { role } = location.state || { 
-    role: 'defense'
-  };
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const [session, setSession] = useState<TrialSession | null>(null);
+  const [caseData, setCaseData] = useState<Case | null>(null);
+  const [role, setRole] = useState<UserRole>(UserRole.DEFENSE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [currentPhase] = useState(0);
-  const [trialData] = useState({
-    caseTitle: 'The People vs. Alex Turner',
-    caseType: 'Criminal',
-    charges: 'Assault and Battery (Misdemeanor)',
-    sessionId: 'trial-123',
-    startTime: new Date(),
-    participants: 6
-  });
+
+  useEffect(() => {
+    const load = async () => {
+      if (!sessionId) return;
+      try {
+        setLoading(true);
+        setError(null);
+        const s = await trialApi.getTrialSession(sessionId);
+        setSession(s);
+        setRole(s.user_role);
+        const c = await CaseService.getCaseById(s.case_id);
+        setCaseData(c);
+      } catch (e) {
+        console.error('Failed to load trial session:', e);
+        setError('Failed to load trial session');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [sessionId]);
 
   const phases = [
     { key: 'opening', label: 'Opening Statements', description: 'Present initial arguments' },
@@ -35,16 +53,50 @@ const TrialPageNew: React.FC = () => {
 
   const [activeSidebarItem, setActiveSidebarItem] = useState('case-info');
   const [inputValue, setInputValue] = useState('');
+  const [expandedEvidenceIds, setExpandedEvidenceIds] = useState<Set<string>>(new Set());
 
   const getPhaseProgress = () => {
     return ((currentPhase + 1) / phases.length) * 100;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+  const refresh = async () => {
+    if (!sessionId) return;
+    try {
+      const s = await trialApi.getTrialSession(sessionId);
+      setSession(s);
+      setRole(s.user_role);
+      const c = await CaseService.getCaseById(s.case_id);
+      setCaseData(c);
+    } catch (e) {
+      console.error('Failed to refresh trial session:', e);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-primary-600 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <p className="text-neutral-700">Loading trial...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !session || !caseData) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 font-medium mb-3">{error || 'Trial session not found'}</p>
+          <Link to="/select-case" className="btn btn-primary">Back to Case Selection</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-neutral-50">
@@ -61,11 +113,11 @@ const TrialPageNew: React.FC = () => {
                 </div>
               </Link>
               <div className="hidden md:flex items-center gap-4 text-sm text-neutral-600">
-                <span className="font-semibold">{trialData.caseTitle}</span>
+                <span className="font-semibold">{caseData.title}</span>
                 <span className="text-neutral-400">•</span>
                 <span className="capitalize">{role} Attorney</span>
                 <span className="text-neutral-400">•</span>
-                <span>Session: <span className="font-mono text-primary-600">{trialData.sessionId}</span></span>
+                <span>Session: <span className="font-mono text-primary-600">{session.id}</span></span>
               </div>
               {/* Navigation */}
               <div className="hidden lg:flex items-center gap-2 ml-4">
@@ -108,30 +160,24 @@ const TrialPageNew: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-64 bg-white border-r border-neutral-200 flex flex-col">
-
-          {/* Sidebar Content */}
           <div className="flex-1 p-4 overflow-y-auto">
             {activeSidebarItem === 'case-info' && (
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Case Details</h3>
                   <div className="text-base text-neutral-600 space-y-1">
-                    <p><strong>Title:</strong> {trialData.caseTitle}</p>
-                    <p><strong>Type:</strong> {trialData.caseType} • <strong>Charges:</strong> {trialData.charges}</p>
+                    <p><strong>Title:</strong> {caseData.title}</p>
+                    <p><strong>Charges:</strong> {caseData.charges.join(', ')}</p>
                   </div>
                 </div>
-                
                 <div>
                   <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Key Facts</h3>
-                  <p className="text-base text-neutral-600 leading-normal">
-                    Alex Turner accused of assault during bar altercation. Prosecution claims Turner initiated confrontation, defense argues self-defense.
-                  </p>
+                  <p className="text-base text-neutral-600 leading-normal whitespace-pre-line">{caseData.case_facts}</p>
                 </div>
-
                 <div>
-                  <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Precedents</h3>
+                  <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Legal Precedents</h3>
                   <div className="text-base text-neutral-600">
-                    State v. Johnson, 2018 • People v. Smith, 2020 • Commonwealth v. Davis, 2022
+                    {caseData.legal_precedents.join(' • ')}
                   </div>
                 </div>
               </div>
@@ -141,25 +187,32 @@ const TrialPageNew: React.FC = () => {
               <div className="space-y-3">
                 <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Evidence Locker</h3>
                 <div className="space-y-2">
-                  {[
-                    { name: 'Security Footage', status: 'Admitted', relevance: 'High' },
-                    { name: 'Medical Report', status: 'Pending', relevance: 'High' },
-                    { name: 'Police Report', status: 'Admitted', relevance: 'Medium' }
-                  ].map((evidence, index) => (
-                    <div key={index} className="p-2 border border-neutral-200 rounded text-base">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-neutral-900">{evidence.name}</span>
-                        <span className={`px-2 py-1 rounded text-sm ${
-                          evidence.status === 'Admitted' ? 'bg-green-100 text-green-700' :
-                          evidence.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {evidence.status}
-                        </span>
+                  {caseData.evidence.map((ev) => {
+                    const admitted = (session.evidence_admitted || []).includes(ev.id) || ev.is_admitted;
+                    return (
+                      <div key={ev.id} className="p-2 border border-neutral-200 rounded text-base">
+                        <div className="flex justify-between items-start">
+                          <div className="min-w-0">
+                            <button
+                              className="font-medium text-neutral-900 block text-left underline decoration-dotted hover:decoration-solid"
+                              onClick={() => {
+                                const next = new Set(expandedEvidenceIds);
+                                if (next.has(ev.id)) next.delete(ev.id); else next.add(ev.id);
+                                setExpandedEvidenceIds(next);
+                              }}
+                            >
+                              {expandedEvidenceIds.has(ev.id) ? ev.title : (ev.title.length > 24 ? ev.title.slice(0, 21) + '…' : ev.title)}
+                            </button>
+                            <span className="text-xs text-neutral-500 block mt-1 capitalize">{ev.evidence_type} • Submitted by {ev.submitted_by}</span>
+                            <p className={`text-xs text-neutral-600 mt-1 ${expandedEvidenceIds.has(ev.id) ? '' : 'line-clamp-2'}`}>{ev.description}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-sm ${admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {admitted ? 'Admitted' : 'Pending'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-neutral-500 text-base">{evidence.relevance}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -168,32 +221,21 @@ const TrialPageNew: React.FC = () => {
               <div className="space-y-3">
                 <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Witness List</h3>
                 <div className="space-y-2">
-                  {[
-                    { name: 'Ethan Carter', role: 'Victim', status: 'Available' },
-                    { name: 'Olivia Bennett', role: 'Witness', status: 'Available' },
-                    { name: 'Noah Thompson', role: 'Witness', status: 'Examined' }
-                  ].map((witness, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 border border-neutral-200 rounded text-base">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-primary-600 font-semibold text-sm">
-                          {witness.name.split(' ').map(n => n[0]).join('')}
-                        </span>
+                  {caseData.witnesses.map((w) => (
+                    <div key={w.id} className="flex items-start gap-2 p-2 border border-neutral-200 rounded text-base">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-neutral-900">{w.name}</div>
+                        <div className="text-neutral-500 text-xs capitalize">Called by {w.called_by}</div>
+                        <div className="text-neutral-600 text-xs mt-1 whitespace-pre-line break-words">
+                          {w.background}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-neutral-900">{witness.name}</div>
-                        <div className="text-neutral-500">{witness.role}</div>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        witness.status === 'Available' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {witness.status}
-                      </span>
+                      <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-700">Available</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
 
             {activeSidebarItem === 'notes' && (
               <div className="space-y-3">
@@ -202,24 +244,16 @@ const TrialPageNew: React.FC = () => {
                   placeholder="Add your private notes and strategy here..."
                   className="w-full h-24 p-2 border border-neutral-300 rounded text-base resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
                 />
-                <div className="space-y-2">
-                  <h4 className="font-medium text-neutral-900 text-base">Quick Notes</h4>
-                  <div className="space-y-1">
-                    <div className="text-base text-neutral-600 p-2 bg-neutral-50 rounded">Key witness credibility issues</div>
-                    <div className="text-base text-neutral-600 p-2 bg-neutral-50 rounded">Objection opportunities</div>
-                    <div className="text-base text-neutral-600 p-2 bg-neutral-50 rounded">Evidence chain of custody</div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
         </aside>
 
-        {/* Main Chat Area */}
+        {/* Main Chat Area with quick replies and input */}
         <main className="flex-1 flex flex-col bg-white">
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
-              {/* Welcome Message */}
+              {/* Welcome */}
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-primary-600" fill="currentColor" viewBox="0 0 24 24">
@@ -227,39 +261,28 @@ const TrialPageNew: React.FC = () => {
                   </svg>
                 </div>
                 <div className="flex flex-col items-start">
-                  <p className="text-base font-semibold text-neutral-800">Judge</p>
+                  <p className="text-base font-semibold text-neutral-800">Welcome to the Courtroom</p>
                   <div className="mt-1 rounded rounded-tl-none bg-white p-3 shadow-sm border border-neutral-200">
-                    <p className="text-base text-neutral-700">The court is now in session. Counsel, you may proceed with your opening statements.</p>
+                    <p className="text-base text-neutral-700">Begin by addressing the judge or other participants. Select who you want to speak to and type your message below.</p>
                   </div>
                 </div>
               </div>
-
-              {/* User Message */}
-              <div className="flex items-start justify-end gap-3">
-                <div className="flex flex-col items-end">
-                  <p className="text-base font-semibold text-neutral-800 capitalize">{role} Attorney</p>
-                  <div className="mt-1 rounded rounded-tr-none bg-primary-600 p-3 text-white shadow-sm">
-                    <p className="text-base">Thank you, your Honor. The {role} will demonstrate that our case is strong and compelling.</p>
-                  </div>
-                </div>
-                <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-600 font-semibold text-base">You</span>
-                </div>
-              </div>
-
-              {/* AI Response */}
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 bg-neutral-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-neutral-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                </div>
-                <div className="flex flex-col items-start">
-                  <p className="text-base font-semibold text-neutral-800">Judge</p>
-                  <div className="mt-1 rounded rounded-tl-none bg-white p-3 shadow-sm border border-neutral-200">
-                    <p className="text-base text-neutral-700">Very well. The prosecution may call its first witness.</p>
-                  </div>
-                </div>
+              {/* Preset quick messages */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Ready to proceed, your Honor.',
+                  'Prosecution may call its first witness.',
+                  'Defense requests a brief recess.',
+                  'Objection, your Honor.'
+                ].map((text, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setInputValue(text)}
+                    className="px-3 py-1 rounded-full text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                  >
+                    {text}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -269,7 +292,7 @@ const TrialPageNew: React.FC = () => {
             <div className="flex gap-2 items-end">
               <textarea 
                 value={inputValue}
-                onChange={handleInputChange}
+                onChange={(e) => setInputValue(e.target.value)}
                 className="flex-1 resize-none rounded-md border-neutral-300 bg-neutral-100 text-neutral-800 placeholder-neutral-500 focus:border-primary-500 focus:ring-primary-500 px-3 py-2 min-h-[44px] max-h-[120px] overflow-y-auto text-base" 
                 placeholder="Address the Judge, Prosecutor, Defense Attorney, or Witness..." 
                 rows={1}
