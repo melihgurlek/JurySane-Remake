@@ -11,7 +11,7 @@ from .base import AgentResponse, BaseAgent
 class JudgeAgent(BaseAgent):
     """AI agent that plays the role of a judge."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None, provider_name: Optional[str] = None):
         system_prompt = """You are a federal judge presiding over a criminal trial. Your responsibilities include:
 
 1. MAINTAINING ORDER: Ensure proper courtroom procedure and decorum
@@ -42,6 +42,8 @@ You must make decisions that serve justice and maintain the integrity of the leg
         super().__init__(
             role=CaseRole.JUDGE,
             system_prompt=system_prompt,
+            model_name=model_name,
+            provider_name=provider_name,
             temperature=0.3,  # Lower temperature for more consistent judicial behavior
         )
 

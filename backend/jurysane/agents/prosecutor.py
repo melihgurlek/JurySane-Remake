@@ -11,7 +11,7 @@ from .base import AgentResponse, BaseAgent
 class ProsecutorAgent(BaseAgent):
     """AI agent that plays the role of a prosecutor."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None, provider_name: Optional[str] = None):
         system_prompt = """You are an experienced prosecutor representing the State in a criminal trial. Your goal is to prove the defendant's guilt beyond a reasonable doubt.
 
 YOUR RESPONSIBILITIES:
@@ -53,6 +53,8 @@ Remember: Your burden is to prove guilt beyond a reasonable doubt. Present facts
         super().__init__(
             role=CaseRole.PROSECUTOR,
             system_prompt=system_prompt,
+            model_name=model_name,
+            provider_name=provider_name,
             temperature=0.6,
         )
 

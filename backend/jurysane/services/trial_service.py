@@ -1,6 +1,7 @@
 """Service for managing trial sessions and agent interactions."""
 
 from typing import Dict, List, Optional, Union
+import os
 from uuid import UUID, uuid4
 
 from ..agents import DefenseAgent, JudgeAgent, JuryAgent, ProsecutorAgent, WitnessAgent
@@ -238,19 +239,27 @@ class TrialService:
 
     def _create_judge_agent(self) -> JudgeAgent:
         """Create a judge agent."""
-        return JudgeAgent()
+        model, provider = self._resolve_provider_and_model_for_role(
+            CaseRole.JUDGE)
+        return JudgeAgent(model_name=model, provider_name=provider)
 
     def _create_prosecutor_agent(self) -> ProsecutorAgent:
         """Create a prosecutor agent."""
-        return ProsecutorAgent()
+        model, provider = self._resolve_provider_and_model_for_role(
+            CaseRole.PROSECUTOR)
+        return ProsecutorAgent(model_name=model, provider_name=provider)
 
     def _create_defense_agent(self) -> DefenseAgent:
         """Create a defense agent."""
-        return DefenseAgent()
+        model, provider = self._resolve_provider_and_model_for_role(
+            CaseRole.DEFENSE)
+        return DefenseAgent(model_name=model, provider_name=provider)
 
     def _create_jury_agent(self) -> JuryAgent:
         """Create a jury agent."""
-        return JuryAgent()
+        model, provider = self._resolve_provider_and_model_for_role(
+            CaseRole.JURY)
+        return JuryAgent(model_name=model, provider_name=provider)
 
     def _create_witness_agent(self, witness: Witness) -> WitnessAgent:
         """Create a witness agent.
@@ -268,7 +277,50 @@ class TrialService:
             "bias": witness.bias,
             "personality": "cooperative",  # Default personality
         }
-        return WitnessAgent(witness_data)
+        model, provider = self._resolve_provider_and_model_for_role(
+            CaseRole.WITNESS)
+        return WitnessAgent(witness_data, model_name=model, provider_name=provider)
+
+    def _resolve_provider_and_model_for_role(self, role: CaseRole) -> tuple[str, str]:
+        """Resolve provider and model for a given role using agentstack.md defaults.
+
+        Environment overrides (if set) take precedence:
+        - JUDGE_PROVIDER/JUDGE_MODEL
+        - PROSECUTOR_PROVIDER/PROSECUTOR_MODEL
+        - DEFENSE_PROVIDER/DEFENSE_MODEL
+        - JURY_PROVIDER/JURY_MODEL
+        - WITNESS_PROVIDER/WITNESS_MODEL
+
+        Fallbacks by tier:
+        - Judge: provider=anthropic, model=claude-3.5-sonnet
+        - Prosecutor/Defense/Jury: provider=openai, model=gpt-4o-mini
+        - Witness: provider=groq, model=groq-llama-3.1-8b
+        """
+        role_key = None
+        if role == CaseRole.JUDGE:
+            role_key = "JUDGE"
+            default_provider, default_model = "anthropic", "claude-3.5-sonnet"
+        elif role == CaseRole.PROSECUTOR:
+            role_key = "PROSECUTOR"
+            default_provider, default_model = "openai", "gpt-4o-mini"
+        elif role == CaseRole.DEFENSE:
+            role_key = "DEFENSE"
+            default_provider, default_model = "openai", "gpt-4o-mini"
+        elif role == CaseRole.JURY:
+            role_key = "JURY"
+            default_provider, default_model = "openai", "gpt-4o-mini"
+        elif role == CaseRole.WITNESS:
+            role_key = "WITNESS"
+            default_provider, default_model = "groq", "groq-llama-3.1-8b"
+        else:
+            default_provider, default_model = os.getenv(
+                "LLM_PROVIDER", "openai"), os.getenv("LLM_MODEL", "gpt-4o-mini")
+
+        provider = os.getenv(
+            f"{role_key}_PROVIDER", default_provider) if role_key else default_provider
+        model = os.getenv(f"{role_key}_MODEL",
+                          default_model) if role_key else default_model
+        return model, provider
 
     async def get_agent_response(
         self,

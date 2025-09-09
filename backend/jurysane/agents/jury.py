@@ -11,7 +11,7 @@ from .base import AgentResponse, BaseAgent
 class JuryAgent(BaseAgent):
     """AI agent that plays the role of a jury."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None, provider_name: Optional[str] = None):
         system_prompt = """You are a jury of 12 citizens deliberating a criminal case. Your duty is to determine guilt or innocence based solely on the evidence presented at trial.
 
 YOUR RESPONSIBILITIES:
@@ -53,6 +53,8 @@ Remember: Better to let a guilty person go free than convict an innocent person.
         super().__init__(
             role=CaseRole.JURY,
             system_prompt=system_prompt,
+            model_name=model_name,
+            provider_name=provider_name,
             temperature=0.5,  # Moderate temperature for balanced deliberation
         )
 

@@ -5,6 +5,14 @@ from typing import Any, Dict, List, Optional
 
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+try:
+    from langchain_anthropic import ChatAnthropic
+except Exception:
+    ChatAnthropic = None  # type: ignore
+try:
+    from langchain_groq import ChatGroq
+except Exception:
+    ChatGroq = None  # type: ignore
 from pydantic import BaseModel, Field
 
 from ..config import settings
@@ -30,6 +38,7 @@ class BaseAgent(ABC):
         role: CaseRole,
         system_prompt: str,
         model_name: Optional[str] = None,
+        provider_name: Optional[str] = None,
         temperature: float = 0.7,
     ):
         """Initialize the agent.
@@ -43,16 +52,46 @@ class BaseAgent(ABC):
         self.role = role
         self.system_prompt = system_prompt
         self.model_name = model_name or settings.llm.model_name
+        self.provider_name = (provider_name or settings.llm.provider).lower()
         self.temperature = temperature
         self.memory: List[BaseMessage] = []
 
-        # Initialize the LLM
-        self.llm = ChatOpenAI(
-            model=self.model_name,
-            temperature=self.temperature,
-            max_tokens=settings.llm.max_tokens,
-            openai_api_key=settings.openai_api_key,
-        )
+        # Initialize the LLM based on provider
+        if self.provider_name == "openai":
+            self.llm = ChatOpenAI(
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=settings.llm.max_tokens,
+                openai_api_key=settings.openai_api_key,
+            )
+        elif self.provider_name == "anthropic":
+            if ChatAnthropic is None:
+                raise RuntimeError(
+                    "Anthropic provider requested but langchain_anthropic is not installed")
+            self.llm = ChatAnthropic(
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=settings.llm.max_tokens,
+                anthropic_api_key=settings.anthropic_api_key,
+            )
+        elif self.provider_name == "groq":
+            if ChatGroq is None:
+                raise RuntimeError(
+                    "Groq provider requested but langchain_groq is not installed")
+            self.llm = ChatGroq(
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=settings.llm.max_tokens,
+                groq_api_key=settings.groq_api_key,
+            )
+        else:
+            # Fallback to OpenAI
+            self.llm = ChatOpenAI(
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=settings.llm.max_tokens,
+                openai_api_key=settings.openai_api_key,
+            )
 
     def add_to_memory(self, message: BaseMessage) -> None:
         """Add a message to the agent's memory."""

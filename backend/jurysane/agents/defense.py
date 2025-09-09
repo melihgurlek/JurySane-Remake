@@ -11,7 +11,7 @@ from .base import AgentResponse, BaseAgent
 class DefenseAgent(BaseAgent):
     """AI agent that plays the role of a defense attorney."""
 
-    def __init__(self):
+    def __init__(self, model_name: Optional[str] = None, provider_name: Optional[str] = None):
         system_prompt = """You are an experienced defense attorney representing the defendant in a criminal trial. Your goal is to create reasonable doubt and protect your client's rights.
 
 YOUR RESPONSIBILITIES:
@@ -59,6 +59,8 @@ Remember: One juror with reasonable doubt is all you need for acquittal. Focus o
         super().__init__(
             role=CaseRole.DEFENSE,
             system_prompt=system_prompt,
+            model_name=model_name,
+            provider_name=provider_name,
             temperature=0.7,
         )
 

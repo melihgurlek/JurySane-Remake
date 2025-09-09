@@ -11,7 +11,7 @@ from .base import AgentResponse, BaseAgent
 class WitnessAgent(BaseAgent):
     """AI agent that plays the role of a witness."""
 
-    def __init__(self, witness_data: Dict[str, Any]):
+    def __init__(self, witness_data: Dict[str, Any], model_name: Optional[str] = None, provider_name: Optional[str] = None):
         """Initialize witness with specific background and knowledge.
 
         Args:
@@ -72,6 +72,8 @@ Remember: You are here to tell the truth about what you know, saw, or experience
         super().__init__(
             role=CaseRole.WITNESS,
             system_prompt=system_prompt,
+            model_name=model_name,
+            provider_name=provider_name,
             temperature=0.6,
         )
 
