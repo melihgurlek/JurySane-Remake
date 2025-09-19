@@ -4,7 +4,10 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+try:
+    from langchain_openai import ChatOpenAI
+except ImportError:
+    ChatOpenAI = None  # type: ignore
 try:
     from langchain_anthropic import ChatAnthropic
 except Exception:
@@ -13,6 +16,10 @@ try:
     from langchain_groq import ChatGroq
 except Exception:
     ChatGroq = None  # type: ignore
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+except Exception:
+    ChatGoogleGenerativeAI = None  # type: ignore
 from pydantic import BaseModel, Field
 
 from ..config import settings
@@ -83,6 +90,16 @@ class BaseAgent(ABC):
                 temperature=self.temperature,
                 max_tokens=settings.llm.max_tokens,
                 groq_api_key=settings.groq_api_key,
+            )
+        elif self.provider_name == "gemini":
+            if ChatGoogleGenerativeAI is None:
+                raise RuntimeError(
+                    "Gemini provider requested but langchain_google_genai is not installed")
+            self.llm = ChatGoogleGenerativeAI(
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=settings.llm.max_tokens,
+                google_api_key=settings.gemini_api_key,
             )
         else:
             # Fallback to OpenAI

@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(
         default=None, alias="ANTHROPIC_API_KEY")
     groq_api_key: Optional[str] = Field(default=None, alias="GROQ_API_KEY")
+    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
 
     # Application
     app_name: str = "JurySane"

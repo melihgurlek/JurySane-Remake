@@ -282,7 +282,7 @@ class TrialService:
         return WitnessAgent(witness_data, model_name=model, provider_name=provider)
 
     def _resolve_provider_and_model_for_role(self, role: CaseRole) -> tuple[str, str]:
-        """Resolve provider and model for a given role using agentstack.md defaults.
+        """Resolve provider and model for a given role using Gemini 2.5 Flash for testing.
 
         Environment overrides (if set) take precedence:
         - JUDGE_PROVIDER/JUDGE_MODEL
@@ -291,30 +291,28 @@ class TrialService:
         - JURY_PROVIDER/JURY_MODEL
         - WITNESS_PROVIDER/WITNESS_MODEL
 
-        Fallbacks by tier:
-        - Judge: provider=anthropic, model=claude-3.5-sonnet
-        - Prosecutor/Defense/Jury: provider=openai, model=gpt-4o-mini
-        - Witness: provider=groq, model=groq-llama-3.1-8b
+        Defaults for testing (cost-effective with Gemini 2.5 Flash at $0.30/1M tokens):
+        - All roles: provider=gemini, model=gemini-2.5-flash
         """
         role_key = None
         if role == CaseRole.JUDGE:
             role_key = "JUDGE"
-            default_provider, default_model = "anthropic", "claude-3.5-sonnet"
+            default_provider, default_model = "gemini", "gemini-2.5-flash"
         elif role == CaseRole.PROSECUTOR:
             role_key = "PROSECUTOR"
-            default_provider, default_model = "openai", "gpt-4o-mini"
+            default_provider, default_model = "gemini", "gemini-2.5-flash"
         elif role == CaseRole.DEFENSE:
             role_key = "DEFENSE"
-            default_provider, default_model = "openai", "gpt-4o-mini"
+            default_provider, default_model = "gemini", "gemini-2.5-flash"
         elif role == CaseRole.JURY:
             role_key = "JURY"
-            default_provider, default_model = "openai", "gpt-4o-mini"
+            default_provider, default_model = "gemini", "gemini-2.5-flash"
         elif role == CaseRole.WITNESS:
             role_key = "WITNESS"
-            default_provider, default_model = "groq", "groq-llama-3.1-8b"
+            default_provider, default_model = "gemini", "gemini-2.5-flash"
         else:
             default_provider, default_model = os.getenv(
-                "LLM_PROVIDER", "openai"), os.getenv("LLM_MODEL", "gpt-4o-mini")
+                "LLM_PROVIDER", "gemini"), os.getenv("LLM_MODEL", "gemini-2.5-flash")
 
         provider = os.getenv(
             f"{role_key}_PROVIDER", default_provider) if role_key else default_provider
