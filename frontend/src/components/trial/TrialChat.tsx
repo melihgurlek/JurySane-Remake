@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { TrialSession, CaseRole, AgentPromptRequest } from '@/types/trial';
 import { trialApi } from '@/lib/api';
 import { toast } from '@/components/ui/Toaster';
@@ -18,6 +18,9 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
   const [selectedAgent, setSelectedAgent] = useState<CaseRole>(CaseRole.JUDGE);
   const [selectedWitness, setSelectedWitness] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const agentResponseMutation = useMutation({
     mutationFn: ({ sessionId, request }: { sessionId: string; request: AgentPromptRequest }) =>
@@ -35,11 +38,27 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setIsUserScrolledUp(false);
+    setShowScrollToBottom(false);
+  };
+
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    
+    setIsUserScrolledUp(!isNearBottom);
+    setShowScrollToBottom(!isNearBottom);
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [session.transcript]);
+    // Only auto-scroll if user hasn't manually scrolled up
+    if (!isUserScrolledUp) {
+      scrollToBottom();
+    }
+  }, [session.transcript, isUserScrolledUp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,28 +113,23 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
     }
   };
 
-  const getMessageIcon = (speaker: string, isUser: boolean) => {
-    if (isUser) {
-      return <User className="h-5 w-5 text-primary-600" />;
-    }
-    return <Bot className="h-5 w-5 text-secondary-600" />;
-  };
 
   const getMessageStyle = (speaker: string, isUser: boolean) => {
     if (isUser) {
       return {
         icon: 'bg-blue-600',
         iconText: 'U',
+        bubbleClass: 'bg-blue-500', // User messages get blue background
       };
     }
     
     // Different colors for different AI agents
-    const agentStyles: Record<string, { icon: string; iconText: string }> = {
-      judge: { icon: 'bg-purple-500', iconText: 'J' },
-      prosecutor: { icon: 'bg-red-500', iconText: 'P' },
-      defense: { icon: 'bg-blue-500', iconText: 'D' },
-      jury: { icon: 'bg-green-500', iconText: 'J' },
-      witness: { icon: 'bg-yellow-500', iconText: 'W' },
+    const agentStyles: Record<string, { icon: string; iconText: string; bubbleClass: string }> = {
+      judge: { icon: 'bg-purple-500', iconText: 'J', bubbleClass: 'bg-gray-100' },
+      prosecutor: { icon: 'bg-red-500', iconText: 'P', bubbleClass: 'bg-gray-100' },
+      defense: { icon: 'bg-blue-500', iconText: 'D', bubbleClass: 'bg-gray-100' },
+      jury: { icon: 'bg-green-500', iconText: 'J', bubbleClass: 'bg-gray-100' },
+      witness: { icon: 'bg-yellow-500', iconText: 'W', bubbleClass: 'bg-gray-100' },
     };
 
     const agentKey = speaker.toLowerCase();
@@ -125,7 +139,7 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
       }
     }
     
-    return { icon: 'bg-gray-500', iconText: 'A' };
+    return { icon: 'bg-gray-500', iconText: 'A', bubbleClass: 'bg-gray-100' };
   };
 
   const availableAgents = [
@@ -148,7 +162,11 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
   return (
     <div className="trial-chat h-full flex flex-col">
       {/* Messages */}
-      <div className="trial-chat-messages flex-1">
+      <div 
+        ref={messagesContainerRef}
+        className="trial-chat-messages flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+      >
         {session.transcript.length === 0 ? (
           <div className="trial-chat-welcome">
             <Bot className="trial-chat-welcome-icon" />
@@ -172,7 +190,7 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
                   </span>
                 </div>
                 <div className="trial-message-content">
-                  <div className="trial-message-bubble">
+                  <div className={cn("trial-message-bubble", messageStyle.bubbleClass)}>
                     <div className="trial-message-header">
                       <h4 className="trial-message-speaker">
                         {message.speaker}
@@ -212,10 +230,45 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         )}
         
         <div ref={messagesEndRef} />
+        
       </div>
 
       {/* Input Form */}
       <div className="trial-chat-input">
+        {/* Scroll to Bottom Button - Overlay */}
+        {showScrollToBottom && (
+          <div style={{
+            position: 'absolute',
+            top: '-3rem',
+            right: '0',
+            zIndex: 1000
+          }}>
+            <button
+              onClick={scrollToBottom}
+              style={{
+                backgroundColor: '#0284c7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#0369a1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#0284c7';
+              }}
+              title="Scroll to bottom"
+            >
+              Scroll Down
+            </button>
+          </div>
+        )}
         {/* Agent Selection */}
         <div className="trial-agent-selection">
           <label className="trial-agent-label">

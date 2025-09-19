@@ -4,9 +4,6 @@ import { trialApi } from '@/lib/api';
 import { Case, TrialSession, UserRole } from '@/types/trial';
 import { CaseService } from '@/services/caseService';
 import TrialChat from '@/components/trial/TrialChat';
-import PhaseManager from '@/components/trial/PhaseManager';
-import EvidenceManager from '@/components/trial/EvidenceManager';
-import TrialNotes from '@/components/trial/TrialNotes';
 import '../styles/design-system.css';
 import '../styles/trial-components.css';
 
@@ -165,7 +162,7 @@ const TrialPageNew: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-64 bg-white border-r border-neutral-200 flex flex-col">
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div className="flex-1 pt-8 px-4 pb-4 overflow-y-auto">
             {activeSidebarItem === 'case-info' && (
               <div className="space-y-4">
                 <div>
@@ -191,29 +188,34 @@ const TrialPageNew: React.FC = () => {
             {activeSidebarItem === 'evidence' && (
               <div className="space-y-3">
                 <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Evidence Locker</h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {caseData.evidence.map((ev) => {
                     const admitted = (session.evidence_admitted || []).includes(ev.id) || ev.is_admitted;
                     return (
-                      <div key={ev.id} className="p-2 border border-neutral-200 rounded text-base">
-                        <div className="flex justify-between items-start">
-                          <div className="min-w-0">
-                            <button
-                              className="font-medium text-neutral-900 block text-left underline decoration-dotted hover:decoration-solid"
-                              onClick={() => {
-                                const next = new Set(expandedEvidenceIds);
-                                if (next.has(ev.id)) next.delete(ev.id); else next.add(ev.id);
-                                setExpandedEvidenceIds(next);
-                              }}
-                            >
-                              {expandedEvidenceIds.has(ev.id) ? ev.title : (ev.title.length > 24 ? ev.title.slice(0, 21) + '…' : ev.title)}
-                            </button>
-                            <span className="text-xs text-neutral-500 block mt-1 capitalize">{ev.evidence_type} • Submitted by {ev.submitted_by}</span>
-                            <p className={`text-xs text-neutral-600 mt-1 ${expandedEvidenceIds.has(ev.id) ? '' : 'line-clamp-2'}`}>{ev.description}</p>
-                          </div>
-                          <span className={`px-2 py-1 rounded text-sm ${admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      <div key={ev.id} className="p-3 border border-neutral-200 rounded-lg bg-white">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-neutral-900 text-sm">{ev.title}</h4>
+                          <span className={`px-2 py-1 rounded text-xs ${admitted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                             {admitted ? 'Admitted' : 'Pending'}
                           </span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs text-neutral-500">
+                            <span className="capitalize font-medium">{ev.evidence_type}</span>
+                            <span className="mx-1">•</span>
+                            <span>Submitted by {ev.submitted_by}</span>
+                          </div>
+                          <p className="text-xs text-neutral-600 leading-relaxed">{ev.description}</p>
+                          <button
+                            onClick={() => {
+                              const next = new Set(expandedEvidenceIds);
+                              if (next.has(ev.id)) next.delete(ev.id); else next.add(ev.id);
+                              setExpandedEvidenceIds(next);
+                            }}
+                            className="text-xs text-primary-600 hover:text-primary-700 underline decoration-dotted hover:decoration-solid"
+                          >
+                            {expandedEvidenceIds.has(ev.id) ? 'Show less' : 'Show more'}
+                          </button>
                         </div>
                       </div>
                     );
@@ -225,19 +227,82 @@ const TrialPageNew: React.FC = () => {
             {activeSidebarItem === 'witnesses' && (
               <div className="space-y-3">
                 <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Witness List</h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {caseData.witnesses.map((w) => (
-                    <div key={w.id} className="flex items-start gap-2 p-2 border border-neutral-200 rounded text-base">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-neutral-900">{w.name}</div>
-                        <div className="text-neutral-500 text-xs capitalize">Called by {w.called_by}</div>
-                        <div className="text-neutral-600 text-xs mt-1 whitespace-pre-line break-words">
-                          {w.background}
-                        </div>
+                    <div key={w.id} className="p-3 border border-neutral-200 rounded-lg bg-white">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-neutral-900 text-sm">{w.name}</h4>
+                        <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Available</span>
                       </div>
-                      <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-700">Available</span>
+                      <div className="space-y-2">
+                        <div className="text-xs text-neutral-500">
+                          <span className="capitalize font-medium">Called by {w.called_by}</span>
+                        </div>
+                        <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
+                          {w.background}
+                        </p>
+                      </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeSidebarItem === 'phases' && (
+              <div className="space-y-3">
+                <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">Trial Progress</h3>
+                <div className="space-y-2">
+                  {phases.map((phase, index) => (
+                    <div key={phase.key} className={`p-3 border rounded-lg ${
+                      index === currentPhase 
+                        ? 'border-primary-500 bg-primary-50' 
+                        : index < currentPhase 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-neutral-200 bg-white'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className={`text-sm font-medium ${
+                          index === currentPhase 
+                            ? 'text-primary-900' 
+                            : index < currentPhase 
+                            ? 'text-green-900' 
+                            : 'text-neutral-600'
+                        }`}>
+                          {phase.label}
+                        </h4>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          index === currentPhase 
+                            ? 'bg-primary-100 text-primary-700' 
+                            : index < currentPhase 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-neutral-100 text-neutral-500'
+                        }`}>
+                          {index === currentPhase ? 'Current' : index < currentPhase ? 'Completed' : 'Upcoming'}
+                        </span>
+                      </div>
+                      <p className={`text-xs ${
+                        index === currentPhase 
+                          ? 'text-primary-700' 
+                          : index < currentPhase 
+                          ? 'text-green-700' 
+                          : 'text-neutral-500'
+                      }`}>
+                        {phase.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                  <div className="text-xs text-neutral-600 mb-2">Overall Progress</div>
+                  <div className="w-full bg-neutral-200 rounded-full h-2">
+                    <div 
+                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${getPhaseProgress()}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-neutral-500 mt-1">
+                    {Math.round(getPhaseProgress())}% Complete
+                  </div>
                 </div>
               </div>
             )}
@@ -247,72 +312,22 @@ const TrialPageNew: React.FC = () => {
                 <h3 className="font-semibold font-sans text-neutral-900 mb-1 text-base">My Notes</h3>
                 <textarea
                   placeholder="Add your private notes and strategy here..."
-                  className="w-full h-24 p-2 border border-neutral-300 rounded text-base resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full h-32 p-3 border border-neutral-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
+                <div className="text-xs text-neutral-500">
+                  Your notes are private and only visible to you.
+                </div>
               </div>
             )}
           </div>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col bg-white relative">
+        <main className="flex-1 flex flex-col bg-white">
           {/* Chat Interface - Always visible and fills the space */}
           <div className="flex-1 flex flex-col">
             <TrialChat session={session} onRefresh={refresh} />
           </div>
-
-          {/* Overlay content for different sidebar sections */}
-          {activeSidebarItem === 'evidence' && (
-            <div className="absolute inset-0 bg-white z-10">
-              <EvidenceManager
-                session={session}
-                caseEvidence={caseData.evidence}
-                onEvidenceChange={refresh}
-              />
-            </div>
-          )}
-
-          {activeSidebarItem === 'witnesses' && (
-            <div className="absolute inset-0 bg-white z-10 overflow-y-auto p-6">
-              <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl font-bold text-neutral-900 mb-6">Witness List</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {caseData.witnesses.map((witness) => (
-                    <div key={witness.id} className="bg-white border border-neutral-200 rounded-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-neutral-900">{witness.name}</h3>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          Available
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <span className="font-medium text-neutral-700">Called by:</span>
-                          <p className="text-neutral-900 capitalize">{witness.called_by}</p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-neutral-700">Background:</span>
-                          <p className="text-neutral-700 text-sm leading-relaxed">{witness.background}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSidebarItem === 'phases' && (
-            <div className="absolute inset-0 bg-white z-10 overflow-y-auto p-6">
-              <PhaseManager session={session} onPhaseChange={refresh} />
-            </div>
-          )}
-
-          {activeSidebarItem === 'notes' && (
-            <div className="absolute inset-0 bg-white z-10">
-              <TrialNotes session={session} />
-            </div>
-          )}
         </main>
       </div>
     </div>
