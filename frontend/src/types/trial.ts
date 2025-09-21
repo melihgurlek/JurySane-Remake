@@ -136,6 +136,12 @@ export interface TrialSession {
   completed_at?: string;
   created_at: string;
   updated_at?: string;
+  case_data?: Case;
+  // Turn management fields
+  current_turn?: CaseRole;
+  turn_count: number;
+  last_speaker?: CaseRole;
+  awaiting_response: boolean;
 }
 
 // API Request/Response types

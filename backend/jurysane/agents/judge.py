@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from langchain.schema import HumanMessage
 
-from ..models.trial import CaseRole, TrialSession
+from ..models.trial import CaseRole, TrialSession, UserRole
 from .base import AgentResponse, BaseAgent
 
 
@@ -55,7 +55,11 @@ You must make decisions that serve justice and maintain the integrity of the leg
     ) -> AgentResponse:
         """Generate a judicial response."""
         messages = self.get_context_messages(trial_session)
-        messages.append(HumanMessage(content=prompt))
+
+        # Add turn management context to the prompt
+        enhanced_prompt = self._enhance_prompt_with_turn_info(
+            prompt, trial_session)
+        messages.append(HumanMessage(content=enhanced_prompt))
 
         # Add specific context for judicial decisions
         phase_value = trial_session.current_phase.value if hasattr(
@@ -64,9 +68,41 @@ You must make decisions that serve justice and maintain the integrity of the leg
         metadata = {
             "trial_phase": phase_value,
             "judge_action": context.get("action") if context else "general_response",
+            "current_turn": trial_session.current_turn.value if trial_session.current_turn and hasattr(trial_session.current_turn, 'value') else str(trial_session.current_turn) if trial_session.current_turn else None,
+            "user_role": trial_session.user_role.value if hasattr(trial_session.user_role, 'value') else trial_session.user_role,
         }
 
         return await self._generate_response(messages, metadata)
+
+    def _enhance_prompt_with_turn_info(self, prompt: str, trial_session: TrialSession) -> str:
+        """Enhance the prompt with turn management information."""
+        user_role = trial_session.user_role
+        current_phase = trial_session.current_phase
+        current_turn = trial_session.current_turn
+
+        turn_info = f"""
+TURN MANAGEMENT CONTEXT:
+- Current trial phase: {current_phase.value if hasattr(current_phase, 'value') else current_phase}
+- User is playing as: {user_role.value if hasattr(user_role, 'value') else user_role}
+- Current turn: {current_turn.value if current_turn and hasattr(current_turn, 'value') else current_turn or 'None'}
+
+IMPORTANT: When you direct someone to speak (e.g., "Prosecution, present your opening statement"), 
+you must include turn management information in your response. Use this format:
+
+RESPONSE FORMAT:
+[Your judicial response here]
+
+TURN_MANAGEMENT: [Role who should speak next]
+
+Examples:
+- If directing prosecution to speak: TURN_MANAGEMENT: prosecution
+- If directing defense to speak: TURN_MANAGEMENT: defense
+- If directing jury to deliberate: TURN_MANAGEMENT: jury
+
+This helps the system know whose turn it is next.
+"""
+
+        return f"{turn_info}\n\nORIGINAL PROMPT: {prompt}"
 
     async def rule_on_objection(
         self,

@@ -36,6 +36,21 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
     },
   });
 
+  const automaticResponseMutation = useMutation({
+    mutationFn: (sessionId: string) => trialApi.getAutomaticAgentResponse(sessionId),
+    onSuccess: () => {
+      onRefresh();
+      toast.success('Automatic response received');
+    },
+    onError: (error: any) => {
+      console.error('Automatic response error:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to get automatic response';
+      if (error.response?.status !== 400) { // Don't show error if it's user's turn
+        toast.error(errorMessage);
+      }
+    },
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     setIsUserScrolledUp(false);
@@ -60,9 +75,60 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
     }
   }, [session.transcript, isUserScrolledUp]);
 
+  // Check if it's the user's turn
+  const isUserTurn = () => {
+    const userRole = session.user_role === 'defense' ? 'defense' : 'prosecutor';
+    // Handle both string and enum cases
+    const currentTurn = session.current_turn;
+    if (typeof currentTurn === 'string') {
+      return currentTurn === userRole;
+    } else if (currentTurn && typeof currentTurn === 'object' && 'value' in currentTurn) {
+      return (currentTurn as any).value === userRole;
+    }
+    return false;
+  };
+
+  // Get display name for turn indicator
+  const getTurnDisplayName = (turn: any) => {
+    if (typeof turn === 'string') {
+      return turn.charAt(0).toUpperCase() + turn.slice(1);
+    } else if (turn && typeof turn === 'object' && 'value' in turn) {
+      return (turn as any).value.charAt(0).toUpperCase() + (turn as any).value.slice(1);
+    }
+    return null;
+  };
+
+  // Handle automatic agent responses
+  const handleAutomaticResponse = async () => {
+    if (!isUserTurn() && session.current_turn && !automaticResponseMutation.isPending) {
+      try {
+        await automaticResponseMutation.mutateAsync(session.id);
+      } catch (error) {
+        // Error handling is done in the mutation
+      }
+    }
+  };
+
+  // Auto-trigger agent responses when it's their turn
+  useEffect(() => {
+    if (session.current_turn && !isUserTurn()) {
+      const timer = setTimeout(() => {
+        handleAutomaticResponse();
+      }, 1000); // 1 second delay to avoid rapid firing
+      
+      return () => clearTimeout(timer);
+    }
+  }, [session.current_turn, session.id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || agentResponseMutation.isPending) return;
+
+    // Check if it's the user's turn
+    if (!isUserTurn()) {
+      toast.error(`It's not your turn. Current turn: ${getTurnDisplayName(session.current_turn)}`);
+      return;
+    }
 
     const userMessage = input.trim();
     const userRoleString = session.user_role === 'defense' ? 'defense' : 'prosecutor';
@@ -86,26 +152,28 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
       // Clear input immediately for better UX
       setInput('');
 
-      // Then get agent response
-      const context: any = {
-        trial_phase: session.current_phase,
-        user_role: session.user_role,
-      };
+      // Then get agent response if talking to a specific agent
+      if (selectedAgent !== CaseRole.JUDGE) {
+        const context: any = {
+          trial_phase: session.current_phase,
+          user_role: session.user_role,
+        };
 
-      // Add witness context if talking to a witness
-      if (selectedAgent === CaseRole.WITNESS && selectedWitness) {
-        context.witness_name = selectedWitness;
+        // Add witness context if talking to a witness
+        if (selectedAgent === CaseRole.WITNESS && selectedWitness) {
+          context.witness_name = selectedWitness;
+        }
+
+        console.log('Getting agent response:', { sessionId: session.id, agentRole: selectedAgent, context });
+        agentResponseMutation.mutate({
+          sessionId: session.id,
+          request: {
+            prompt: userMessage,
+            agent_role: selectedAgent,
+            context,
+          },
+        });
       }
-
-      console.log('Getting agent response:', { sessionId: session.id, agentRole: selectedAgent, context });
-      agentResponseMutation.mutate({
-        sessionId: session.id,
-        request: {
-          prompt: userMessage,
-          agent_role: selectedAgent,
-          context,
-        },
-      });
     } catch (error: any) {
       console.error('Failed to add transcript entry:', error);
       const errorMessage = error.response?.data?.detail || error.message || 'Failed to send message';
@@ -231,6 +299,13 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
         
         <div ref={messagesEndRef} />
         
+      </div>
+
+      {/* Turn Indicator */}
+      <div className="turn-indicator">
+        <span className={`turn-status ${isUserTurn() ? 'user-turn' : 'agent-turn'}`}>
+          {isUserTurn() ? 'Your Turn' : `Turn: ${getTurnDisplayName(session.current_turn) || 'None'}`}
+        </span>
       </div>
 
       {/* Input Form */}

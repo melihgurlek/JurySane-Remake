@@ -150,3 +150,12 @@ class TrialSession(BaseModel):
         default=None, description="Trial completion time")
     case_data: Optional[Case] = Field(
         default=None, description="Case data for agent context")
+    # Turn management fields
+    current_turn: Optional[CaseRole] = Field(
+        default=None, description="Who should speak next")
+    turn_count: int = Field(
+        default=0, description="Number of turns taken")
+    last_speaker: Optional[CaseRole] = Field(
+        default=None, description="Who spoke last")
+    awaiting_response: bool = Field(
+        default=False, description="Whether system is waiting for a response")

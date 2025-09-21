@@ -2,6 +2,7 @@
 
 from typing import Dict, List, Optional, Union
 import os
+import re
 from uuid import UUID, uuid4
 
 from ..agents import DefenseAgent, JudgeAgent, JuryAgent, ProsecutorAgent, WitnessAgent
@@ -15,6 +16,7 @@ from ..models.trial import (
     Verdict,
     Witness,
 )
+from .turn_manager import TurnManager
 
 
 class TrialService:
@@ -24,6 +26,7 @@ class TrialService:
         """Initialize the trial service."""
         self.active_sessions: Dict[UUID, TrialSession] = {}
         self.cases: Dict[UUID, Case] = {}
+        self.turn_manager = TurnManager()
 
     async def create_trial_session(
         self,
@@ -102,6 +105,10 @@ class TrialService:
             participants=participants,
         )
 
+        # Initialize turn management
+        trial_session = self.turn_manager.initialize_turn_for_phase(
+            trial_session)
+
         # Store session and case
         self.active_sessions[session_id] = trial_session
         self.cases[case.id] = case
@@ -174,6 +181,10 @@ class TrialService:
         )
 
         session.current_phase = next_phase
+
+        # Initialize turn management for new phase
+        session = self.turn_manager.initialize_turn_for_phase(session)
+
         return session
 
     def _is_valid_phase_transition(self, current: TrialPhase, next_phase: TrialPhase) -> bool:
@@ -352,6 +363,20 @@ class TrialService:
         if not session:
             raise ValueError(f"Trial session {session_id} not found")
 
+        # Check if agent should respond based on turn management
+        if not self.turn_manager.should_agent_respond(session, agent_role):
+            user_case_role = CaseRole.DEFENSE if session.user_role == UserRole.DEFENSE else CaseRole.PROSECUTOR
+            if agent_role == user_case_role:
+                agent_name = agent_role.value if hasattr(
+                    agent_role, 'value') else str(agent_role)
+                raise ValueError(
+                    f"It's the user's turn to speak as {agent_name}")
+            else:
+                agent_name = agent_role.value if hasattr(
+                    agent_role, 'value') else str(agent_role)
+                raise ValueError(
+                    f"It's not {agent_name}'s turn to speak")
+
         # Get case data and attach to session for context
         case = await self.get_case(session.case_id)
         if case:
@@ -388,17 +413,76 @@ class TrialService:
         # Get response from agent
         response = await agent.respond(prompt, session, context)
 
+        # Parse turn management information from judge responses
+        turn_info = self._parse_turn_management_from_response(response.content)
+
+        # Clean the response content by removing TURN_MANAGEMENT lines
+        cleaned_content = self._clean_response_content(response.content)
+
         # Add to transcript
-        agent_name = agent_role.value.title() if hasattr(
-            agent_role, 'value') else agent_role.title()
+        if hasattr(agent_role, 'value'):
+            agent_name = agent_role.value.title()
+        elif isinstance(agent_role, str):
+            agent_name = agent_role.title()
+        else:
+            agent_name = str(agent_role).title()
         await self.add_transcript_entry(
             session_id,
             agent_name,
-            response.content,
-            {"confidence": response.confidence, "metadata": response.metadata},
+            cleaned_content,
+            {"confidence": response.confidence,
+                "metadata": response.metadata, "turn_info": turn_info},
         )
 
-        return response.content
+        # Update turn management
+        session = self.turn_manager.update_turn_after_response(
+            session, agent_role)
+
+        # If judge specified a turn, override the turn manager's decision
+        if turn_info and agent_role == CaseRole.JUDGE:
+            session.current_turn = turn_info
+
+        return cleaned_content
+
+    def _clean_response_content(self, response_content: str) -> str:
+        """Clean response content by removing TURN_MANAGEMENT lines.
+
+        Args:
+            response_content: The agent's raw response content
+
+        Returns:
+            Cleaned response content without TURN_MANAGEMENT lines
+        """
+        # Remove TURN_MANAGEMENT lines from the response
+        lines = response_content.split('\n')
+        cleaned_lines = []
+
+        for line in lines:
+            # Skip lines that contain TURN_MANAGEMENT
+            if not re.search(r'TURN_MANAGEMENT:\s*\w+', line, re.IGNORECASE):
+                cleaned_lines.append(line)
+
+        return '\n'.join(cleaned_lines).strip()
+
+    def _parse_turn_management_from_response(self, response_content: str) -> Optional[CaseRole]:
+        """Parse turn management information from agent response.
+
+        Args:
+            response_content: The agent's response content
+
+        Returns:
+            CaseRole if turn management info found, None otherwise
+        """
+        # Look for TURN_MANAGEMENT: pattern in response
+        turn_match = re.search(r'TURN_MANAGEMENT:\s*(\w+)',
+                               response_content, re.IGNORECASE)
+        if turn_match:
+            turn_role = turn_match.group(1).lower()
+            try:
+                return CaseRole(turn_role)
+            except ValueError:
+                pass
+        return None
 
     async def submit_evidence(
         self,
@@ -575,3 +659,113 @@ class TrialService:
         session.completed_at = None  # Will be set by the model
 
         return session
+
+    async def get_automatic_agent_response(
+        self,
+        session_id: UUID,
+        context: Optional[Dict] = None,
+    ) -> Optional[str]:
+        """Get an automatic response from the agent whose turn it is.
+
+        Args:
+            session_id: Session ID
+            context: Additional context
+
+        Returns:
+            Agent response if it's an AI agent's turn, None if user's turn
+        """
+        session = self.active_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Trial session {session_id} not found")
+
+        current_turn = session.current_turn
+        if not current_turn:
+            return None
+
+        # Check if it's the user's turn
+        user_case_role = CaseRole.DEFENSE if session.user_role == UserRole.DEFENSE else CaseRole.PROSECUTOR
+
+        # Ensure current_turn is a CaseRole enum for comparison
+        if isinstance(current_turn, str):
+            try:
+                current_turn = CaseRole(current_turn.lower())
+            except ValueError:
+                print(f"Invalid current_turn value: {current_turn}")
+                return None
+
+        if current_turn == user_case_role:
+            return None
+
+        # It's an AI agent's turn, get their response
+        try:
+            # Ensure current_turn is a CaseRole enum for get_agent_response
+            if isinstance(current_turn, str):
+                try:
+                    current_turn = CaseRole(current_turn.lower())
+                except ValueError:
+                    print(f"Invalid current_turn value: {current_turn}")
+                    return None
+
+            # Create a generic prompt for the agent to respond
+            prompt = self._get_turn_prompt_for_agent(current_turn, session)
+            response = await self.get_agent_response(
+                session_id=session_id,
+                agent_role=current_turn,
+                prompt=prompt,
+                context=context
+            )
+            return response
+        except Exception as e:
+            print(f"Error getting automatic response from {current_turn}: {e}")
+            return None
+
+    def _get_turn_prompt_for_agent(self, agent_role: CaseRole, session: TrialSession) -> str:
+        """Get an appropriate prompt for an agent based on their turn.
+
+        Args:
+            agent_role: Role of the agent
+            session: Current trial session
+
+        Returns:
+            Prompt for the agent
+        """
+        # Ensure agent_role is a CaseRole enum
+        if isinstance(agent_role, str):
+            try:
+                agent_role = CaseRole(agent_role.lower())
+            except ValueError:
+                return "Please respond appropriately to the current situation."
+
+        # Handle both enum and string values for current_phase
+        if hasattr(session.current_phase, 'value'):
+            phase = session.current_phase.value
+        elif isinstance(session.current_phase, str):
+            phase = session.current_phase
+        else:
+            phase = str(session.current_phase)
+
+        if agent_role == CaseRole.JUDGE:
+            if phase == "setup":
+                return "Please open the court session and call the case. Welcome everyone and begin the trial proceedings."
+            else:
+                return "Please proceed with your judicial duties for this phase of the trial."
+        elif agent_role == CaseRole.PROSECUTOR:
+            if phase == "opening_statements":
+                return "Please present your opening statement to the jury."
+            elif phase == "witness_examination":
+                return "Please call your first witness or continue with witness examination."
+            elif phase == "closing_arguments":
+                return "Please present your closing argument to the jury."
+        elif agent_role == CaseRole.DEFENSE:
+            if phase == "opening_statements":
+                return "Please present your opening statement to the jury."
+            elif phase == "witness_examination":
+                return "Please cross-examine the witness or call your own witness."
+            elif phase == "closing_arguments":
+                return "Please present your closing argument to the jury."
+        elif agent_role == CaseRole.JURY:
+            return "Please deliberate on the case and reach a verdict."
+        elif agent_role == CaseRole.WITNESS:
+            return "Please respond to the questions being asked."
+
+        return "Please respond appropriately to the current situation."

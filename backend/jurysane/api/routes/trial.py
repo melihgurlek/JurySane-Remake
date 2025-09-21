@@ -168,9 +168,17 @@ async def get_agent_response(
             context=request.context,
         )
 
+        # Handle both enum and string values for agent_role
+        if hasattr(request.agent_role, 'value'):
+            speaker_name = request.agent_role.value.title()
+        elif isinstance(request.agent_role, str):
+            speaker_name = request.agent_role.title()
+        else:
+            speaker_name = str(request.agent_role).title()
+
         return AgentResponse(
             content=content,
-            speaker=request.agent_role.value.title(),
+            speaker=speaker_name,
             metadata=request.context,
         )
     except ValueError as e:
@@ -216,6 +224,68 @@ async def advance_trial_phase(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to advance trial phase: {str(e)}",
+        ) from e
+
+
+@router.post("/{session_id}/auto-response", response_model=AgentResponse)
+async def get_automatic_agent_response(
+    session_id: UUID,
+    trial_service: TrialService = Depends(get_trial_service),
+) -> AgentResponse:
+    """Get an automatic response from the agent whose turn it is.
+
+    Args:
+        session_id: Session ID
+        trial_service: Trial service instance
+
+    Returns:
+        Agent response if it's an AI agent's turn
+
+    Raises:
+        HTTPException: If no automatic response is available
+    """
+    try:
+        response_content = await trial_service.get_automatic_agent_response(
+            session_id=session_id,
+        )
+
+        if response_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No automatic response available - it's the user's turn",
+            )
+
+        # Get the session to determine who responded
+        session = await trial_service.get_trial_session(session_id)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trial session not found",
+            )
+
+        # Handle both string and enum cases for current_turn
+        if session.current_turn:
+            if hasattr(session.current_turn, 'value'):
+                speaker = session.current_turn.value.title()
+            else:
+                speaker = str(session.current_turn).title()
+        else:
+            speaker = "Unknown"
+
+        return AgentResponse(
+            content=response_content,
+            speaker=speaker,
+            metadata={"automatic_response": True},
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get automatic response: {str(e)}",
         ) from e
 
 
