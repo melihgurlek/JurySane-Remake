@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from ...models.trial import Case, CaseRole, TrialPhase, TrialSession, UserRole, Verdict
 from ...services.trial_service import TrialService
 from ...data.case_store import get_shared_cases, get_case_by_id as get_case_by_id_from_store
+from ...utils import format_case_role
 
 
 router = APIRouter(prefix="/trial", tags=["trial"])
@@ -168,13 +169,8 @@ async def get_agent_response(
             context=request.context,
         )
 
-        # Handle both enum and string values for agent_role
-        if hasattr(request.agent_role, 'value'):
-            speaker_name = request.agent_role.value.title()
-        elif isinstance(request.agent_role, str):
-            speaker_name = request.agent_role.title()
-        else:
-            speaker_name = str(request.agent_role).title()
+        # Format speaker name using utility function
+        speaker_name = format_case_role(request.agent_role)
 
         return AgentResponse(
             content=content,
@@ -263,14 +259,9 @@ async def get_automatic_agent_response(
                 detail="Trial session not found",
             )
 
-        # Handle both string and enum cases for current_turn
-        if session.current_turn:
-            if hasattr(session.current_turn, 'value'):
-                speaker = session.current_turn.value.title()
-            else:
-                speaker = str(session.current_turn).title()
-        else:
-            speaker = "Unknown"
+        # Format speaker name using utility function
+        speaker = format_case_role(
+            session.current_turn) if session.current_turn else "Unknown"
 
         return AgentResponse(
             content=response_content,

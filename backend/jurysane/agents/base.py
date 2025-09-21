@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from ..config import settings
 from ..models.trial import CaseRole, TrialSession
+from ..utils import get_enum_value, format_trial_phase
 
 
 class AgentResponse(BaseModel):
@@ -149,8 +150,8 @@ class BaseAgent(ABC):
             Formatted case context
         """
         context_parts = [
-            f"Trial Phase: {trial_session.current_phase.value if hasattr(trial_session.current_phase, 'value') else trial_session.current_phase}",
-            f"User Role: {trial_session.user_role.value if hasattr(trial_session.user_role, 'value') else trial_session.user_role}",
+            f"Trial Phase: {format_trial_phase(trial_session.current_phase)}",
+            f"User Role: {get_enum_value(trial_session.user_role)}",
         ]
 
         # Add case information if available

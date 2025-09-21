@@ -136,15 +136,12 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
 
     try {
       // Add user message to transcript first
-      console.log('Adding transcript entry:', { sessionId: session.id, speaker, content: userMessage });
       const updatedSession = await trialApi.addTranscriptEntry(
         session.id,
         speaker,
         userMessage,
         { user_input: true }
       );
-      console.log('Transcript entry added successfully, updated session:', updatedSession);
-      console.log('Transcript length:', updatedSession.transcript.length);
 
       // Refresh the session to show the new message
       onRefresh();
@@ -164,7 +161,6 @@ const TrialChat = ({ session, onRefresh }: TrialChatProps) => {
           context.witness_name = selectedWitness;
         }
 
-        console.log('Getting agent response:', { sessionId: session.id, agentRole: selectedAgent, context });
         agentResponseMutation.mutate({
           sessionId: session.id,
           request: {

@@ -16,6 +16,7 @@ from ..models.trial import (
     Verdict,
     Witness,
 )
+from ..utils import get_enum_value, is_enum_or_string_equal, format_case_role
 from .turn_manager import TurnManager
 
 
@@ -161,18 +162,14 @@ class TrialService:
         # Validate phase transition
         current_phase = session.current_phase
         if not self._is_valid_phase_transition(current_phase, next_phase):
-            current_str = current_phase.value if hasattr(
-                current_phase, 'value') else current_phase
-            next_str = next_phase.value if hasattr(
-                next_phase, 'value') else next_phase
+            current_str = get_enum_value(current_phase)
+            next_str = get_enum_value(next_phase)
             raise ValueError(
                 f"Invalid phase transition from {current_str} to {next_str}")
 
         # Add phase transition to transcript
-        current_str = current_phase.value if hasattr(
-            current_phase, 'value') else current_phase
-        next_str = next_phase.value if hasattr(
-            next_phase, 'value') else next_phase
+        current_str = get_enum_value(current_phase)
+        next_str = get_enum_value(next_phase)
         await self.add_transcript_entry(
             session_id,
             "Court Clerk",
@@ -239,13 +236,11 @@ class TrialService:
             "speaker": speaker,
             "content": content,
             "timestamp": "",  # Will be set by the model
-            "phase": session.current_phase.value if hasattr(session.current_phase, 'value') else session.current_phase,
+            "phase": get_enum_value(session.current_phase),
             "metadata": metadata or {},
         }
 
         session.transcript.append(transcript_entry)
-        print(f"Added transcript entry: {transcript_entry}")
-        print(f"Session transcript length: {len(session.transcript)}")
         return session
 
     def _create_judge_agent(self) -> JudgeAgent:
@@ -420,12 +415,7 @@ class TrialService:
         cleaned_content = self._clean_response_content(response.content)
 
         # Add to transcript
-        if hasattr(agent_role, 'value'):
-            agent_name = agent_role.value.title()
-        elif isinstance(agent_role, str):
-            agent_name = agent_role.title()
-        else:
-            agent_name = str(agent_role).title()
+        agent_name = format_case_role(agent_role)
         await self.add_transcript_entry(
             session_id,
             agent_name,
@@ -690,7 +680,7 @@ class TrialService:
             try:
                 current_turn = CaseRole(current_turn.lower())
             except ValueError:
-                print(f"Invalid current_turn value: {current_turn}")
+                # Invalid current_turn value, return None
                 return None
 
         if current_turn == user_case_role:
@@ -703,7 +693,7 @@ class TrialService:
                 try:
                     current_turn = CaseRole(current_turn.lower())
                 except ValueError:
-                    print(f"Invalid current_turn value: {current_turn}")
+                    # Invalid current_turn value, return None
                     return None
 
             # Create a generic prompt for the agent to respond
@@ -716,7 +706,7 @@ class TrialService:
             )
             return response
         except Exception as e:
-            print(f"Error getting automatic response from {current_turn}: {e}")
+            # Log error getting automatic response
             return None
 
     def _get_turn_prompt_for_agent(self, agent_role: CaseRole, session: TrialSession) -> str:
@@ -737,12 +727,7 @@ class TrialService:
                 return "Please respond appropriately to the current situation."
 
         # Handle both enum and string values for current_phase
-        if hasattr(session.current_phase, 'value'):
-            phase = session.current_phase.value
-        elif isinstance(session.current_phase, str):
-            phase = session.current_phase
-        else:
-            phase = str(session.current_phase)
+        phase = get_enum_value(session.current_phase)
 
         if agent_role == CaseRole.JUDGE:
             if phase == "setup":

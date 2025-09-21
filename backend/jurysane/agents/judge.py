@@ -6,6 +6,7 @@ from langchain.schema import HumanMessage
 
 from ..models.trial import CaseRole, TrialSession, UserRole
 from .base import AgentResponse, BaseAgent
+from ..utils import get_enum_value, format_trial_phase
 
 
 class JudgeAgent(BaseAgent):
@@ -62,14 +63,13 @@ You must make decisions that serve justice and maintain the integrity of the leg
         messages.append(HumanMessage(content=enhanced_prompt))
 
         # Add specific context for judicial decisions
-        phase_value = trial_session.current_phase.value if hasattr(
-            trial_session.current_phase, 'value') else trial_session.current_phase
+        phase_value = get_enum_value(trial_session.current_phase)
 
         metadata = {
             "trial_phase": phase_value,
             "judge_action": context.get("action") if context else "general_response",
-            "current_turn": trial_session.current_turn.value if trial_session.current_turn and hasattr(trial_session.current_turn, 'value') else str(trial_session.current_turn) if trial_session.current_turn else None,
-            "user_role": trial_session.user_role.value if hasattr(trial_session.user_role, 'value') else trial_session.user_role,
+            "current_turn": get_enum_value(trial_session.current_turn) if trial_session.current_turn else None,
+            "user_role": get_enum_value(trial_session.user_role),
         }
 
         return await self._generate_response(messages, metadata)
@@ -82,9 +82,9 @@ You must make decisions that serve justice and maintain the integrity of the leg
 
         turn_info = f"""
 TURN MANAGEMENT CONTEXT:
-- Current trial phase: {current_phase.value if hasattr(current_phase, 'value') else current_phase}
-- User is playing as: {user_role.value if hasattr(user_role, 'value') else user_role}
-- Current turn: {current_turn.value if current_turn and hasattr(current_turn, 'value') else current_turn or 'None'}
+- Current trial phase: {get_enum_value(current_phase)}
+- User is playing as: {get_enum_value(user_role)}
+- Current turn: {get_enum_value(current_turn) if current_turn else 'None'}
 
 IMPORTANT: When you direct someone to speak (e.g., "Prosecution, present your opening statement"), 
 you must include turn management information in your response. Use this format:

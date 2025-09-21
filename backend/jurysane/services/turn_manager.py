@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 from ..models.trial import CaseRole, TrialPhase, TrialSession, UserRole
+from ..utils import get_enum_value, is_enum_or_string_equal
 
 
 class TurnManager:
@@ -40,12 +41,7 @@ class TurnManager:
         user_role = session.user_role
 
         # Handle both enum and string values for current_phase
-        if hasattr(current_phase, 'value'):
-            phase_value = current_phase.value
-        elif isinstance(current_phase, str):
-            phase_value = current_phase
-        else:
-            phase_value = str(current_phase)
+        phase_value = get_enum_value(current_phase)
 
         # Get the turn sequence for current phase
         turn_sequence = self.phase_turn_sequences.get(current_phase, [])
@@ -137,16 +133,10 @@ class TurnManager:
             True if the agent should respond
         """
         # If it's the agent's turn, they should respond
-        # Handle both enum and string comparisons
         if session.current_turn is None:
             return False
 
-        current_turn_value = session.current_turn.value if hasattr(
-            session.current_turn, 'value') else str(session.current_turn)
-        agent_role_value = agent_role.value if hasattr(
-            agent_role, 'value') else str(agent_role)
-
-        if current_turn_value == agent_role_value:
+        if is_enum_or_string_equal(session.current_turn, agent_role):
             return True
 
         # Special cases where agents can always respond
